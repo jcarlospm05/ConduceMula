@@ -878,12 +878,12 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final hasPhoto = draft!.values['evidence_state'] == 'photo';
     return stack([
       Text(
-        '${session!.stage.label} · ${draft!.step + 1} de ${draft!.fields.length}',
+        '${stageTitle(session!.stage)} · ${draft!.step + 1} de ${draft!.fields.length}',
       ),
       const SizedBox(height: 16),
       LinearProgressIndicator(
         value: (draft!.step + 1) / draft!.fields.length,
-        color: const Color(0xFF966018),
+        color: widget.muleStyle ? MulePalette.cyan : const Color(0xFF966018),
         semanticsLabel: 'Progreso de captura',
       ),
       const SizedBox(height: 28),
@@ -940,16 +940,88 @@ class _OperatorScreenState extends State<OperatorScreen> {
           hasPhoto ||
           services == null ||
           draft!.values['evidence_state'] == 'omitted')
-        primary(photoStep ? 'Guardar ficha' : 'Siguiente', next),
+        if (!widget.muleStyle)
+          primary(photoStep ? 'Guardar ficha' : 'Siguiente', next),
     ]);
   }
 
+  bool get captureContinueVisible {
+    if (screen != 'capture' || draft == null) return false;
+    final column = draft!.fields[draft!.step].column;
+    return column != 'omission_reason' ||
+        draft!.values['evidence_state'] == 'photo' ||
+        services == null ||
+        draft!.values['evidence_state'] == 'omitted';
+  }
+
+  Widget timeInput() => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: TextField(
+          key: const Key('mule-hour'),
+          controller: timeHour,
+          focusNode: captureFocus,
+          enabled: !busy,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(2),
+          ],
+          style: const TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: const InputDecoration(labelText: 'Hora'),
+          onChanged: (_) => timeChanged(),
+          onEditingComplete: () => minuteFocus.requestFocus(),
+        ),
+      ),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 25),
+        child: Text(
+          ':',
+          style: TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      Expanded(
+        child: TextField(
+          key: const Key('mule-minute'),
+          controller: timeMinute,
+          focusNode: minuteFocus,
+          enabled: !busy,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(2),
+          ],
+          style: const TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: const InputDecoration(labelText: 'Minutos'),
+          onChanged: (_) => timeChanged(),
+          onEditingComplete: () {},
+          onSubmitted: (_) => next(),
+        ),
+      ),
+    ],
+  );
+
   Widget captureInput(CaptureField f) {
+    if (widget.muleStyle && f.column == 'time') return timeInput();
     final child = TextField(
       key: ValueKey('${draft!.ticketId}:${draft!.step}'),
       controller: input,
+      focusNode: widget.muleStyle ? captureFocus : null,
       enabled: !busy,
       onChanged: changed,
+      onEditingComplete: widget.muleStyle ? () {} : null,
       onSubmitted: (_) => next(),
       textInputAction: TextInputAction.next,
       keyboardType: f.column == 'meter'
