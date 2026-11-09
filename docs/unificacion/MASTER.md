@@ -90,7 +90,7 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 
 1. **Separación inicial y acuerdos**: extraer rutas/escritura privada, manifiestos de adjuntos y funciones de cifrado; preparar tokens de diseño sin aplicarlos. Verificar recorridos existentes. Estado: completada y verificada localmente (12 pruebas de captura/almacenamiento y 3 de interoperabilidad/interfaz del receptor; ambos análisis sin incidencias).
 2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. Completada: 52 pruebas y compilación Android aprobadas en CI (código 73dc6d1845409913e079999ca059a3cac0bc3ab8). Detalle en ETAPA-2.md.
-3. **Estilo Mule y captura**: temas, componentes, inicio contextual, hora/minutos, teclado y evidencia visible. **En ejecución en ConduceMula, rama feat/interfaz-muleagent-v1.** Primer checkpoint: temas, logo oficial PNG `LOGO_MULEAGENT_V1` sin modificación, inicio/continuación, hora separada y miniaturas; ver ETAPA-3.md. Pruebas de esta rama por verificar.
+3. **Estilo Mule y captura**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #1. Temas claro/oscuro persistentes, logo PNG oficial `LOGO_MULEAGENT_V1` sin modificación, inicio/continuación, salida naranja, puntos pendientes, teclado/hora separada y miniaturas. **54 pruebas y análisis sin incidencias + APK debug unificada compilada** (CI 42680728689). Detalle en ETAPA-3.md. La validación física permanece en la etapa 6.
 4. **JPG + .mule**: generador de fichas, contratos/migraciones, adjuntos únicos, guardado automático y respaldos sin nuevos PDF del recorrido de captura.
 5. **Administrador simplificado**: recepción múltiple por fecha/etapa, consolidación, exclusión reversible y PDF administrativo; retirar Excel/cruces de las rutas visibles.
 6. **Verificación y entrega**: actualizaciones con datos existentes, compatibilidad, Android/WhatsApp/archivos, firmas y APK única en ZIP.
@@ -99,7 +99,7 @@ Cada etapa tendrá su propio cambio y resumen. Una etapa técnica aprobada no eq
 
 ## Próximo punto de reanudación
 
-Etapa 3 iniciada en ConduceMula usando INTERFAZ_MULEAGENT_V1; verificar CI, accesibilidad, teclado y referencia antes de cerrar. Ver ETAPA-3.md. Etapas 4–6 todavía pendientes. No reabrir decisiones ya aprobadas. Resolver elecciones técnicas ordinarias sin pedir confirmaciones de nuevo.
+**Reanudar en etapa 4** en ConduceMula, rama `refactor/mule-unificada`. Etapa 3 cerrada con CI verde (ver ETAPA-3.md). Implementar fichas JPG por mula, guardado y envío conjunto JPG + .mule; retirar PDF del recorrido de captura sin borrar archivos históricos ni romper compatibilidad. La verificación Android físico queda en la etapa 6. No reabrir decisiones ya aprobadas.
 
 
 ## Checkpoint 1: estructura real

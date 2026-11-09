@@ -1,6 +1,6 @@
 # Etapa 3 — INTERFAZ_MULEAGENT_V1 (ConduceMula)
 
-Estado: **en ejecución; primer checkpoint implementado en la rama feat/interfaz-muleagent-v1**.
+Estado: **COMPLETADA el 9 de noviembre de 2026 e integrada en `refactor/mule-unificada`**.
 La base es la etapa 2 de `refactor/mule-unificada`, ya transferida desde MuleAgent.
 MuleAgent original no debe recibir modificaciones.
 
@@ -11,7 +11,7 @@ MuleAgent original no debe recibir modificaciones.
 - Imagen aprobada copiada: https://drive.google.com/file/d/1sRh6ZPff8vg2xSntXsA1eI6ELH7Z3dlK/view
 - Paleta y medidas: `apps/operador/lib/design/mule_tokens.dart`.
 
-## Primer checkpoint de código
+## Implementación cerrada
 
 - `mule_theme.dart`: temas claro y oscuro, superficies sólidas, Roboto y jerarquía de botones.
 - `MuleAgentApp`: selección de tema mediante ThemeMode.
@@ -23,15 +23,22 @@ MuleAgent original no debe recibir modificaciones.
 - Miniatura visible de la imagen original del horómetro y ampliación al tocar; no reemplaza ni recorta el original.
 - Se conservan los flujos, las rutas de archivo, las revisiones y los permisos heredados. No se introduce cambio de esquema.
 
-## Verificación y pendientes
+## Verificación de cierre
 
-- Se incorporaron pruebas de selección/persistencia de tema, salida naranja, continuación de una etapa abierta y campos separados de hora/minutos.
-- El workflow `mule-unificada.yml` se habilitó para la nueva rama, con análisis, regresiones y compilación Android. **No afirmar que pasó hasta consultar los resultados del run.**
-- Comprobar visualmente claro/oscuro, textos ampliados, miniaturas y teclado en dispositivos pequeños Android reales.
-- Logo original: integridad del blob verificada en ambos destinos del repositorio. Comprobar tamaño efectivo en el encabezado y en el lanzador sobre Android físico.
-- Revisar todos los recorridos restantes para mantener la misma jerarquía visual.
-- **Las etapas 4 y 5 están pendientes:** no cambiar todavía contrato .mule, JPG del conduce, flujo PDF ni consolidación administrativa.
+- Repositorio de trabajo y destino: **jcarlospm05/ConduceMula**, exclusivamente.
+- PR de integración: https://github.com/jcarlospm05/ConduceMula/pull/1
+- Merge a la rama de desarrollo `refactor/mule-unificada`: `6bbce0265af992b6b5d741509d300d0b8c30b1b4`.
+- GitHub Actions (MuleAgent modular): https://github.com/jcarlospm05/ConduceMula/actions/runs/42680728689 — **success**.
+- Dart/Flutter Analyze de perfiles, datos, captura, receptor y app unificada: **sin incidencias**.
+- **54 pruebas aprobadas**: 6 perfiles, 12 datos compartidos, 11 datos Administrador, 12 captura/archivos, 3 receptor, 10 app unificada. Incluye test nuevo de tema claro/oscuro y su persistencia, salida naranja, reanudación y captura HH:mm.
+- Android: `flutter build apk --debug` completó correctamente para `apps/muleagent` (una sola aplicación unificada). La APK depuración no constituye entrega final ni APK firmada de producción.
+- Identidad visual: el PNG original `LOGO_MULEAGENT_V1` tiene la misma huella Git `ba68768a96da18e5922b0d404f35069da29c243b` en Flutter y Android; no se redibujó.
+- Se conservan esquemas y módulos de datos/cifrado/perfiles de las etapas 1–2, sin modificación.
 
-## Criterio de cierre
+## Pendientes trasladados a otras etapas
 
-Análisis Flutter sin errores, regresiones aprobadas, prueba de UI/teclado en teléfono, y comparación visual con la referencia. Al cerrar, registrar el commit y las incidencias. Una captura satisfactoria no equivale a APK final.
+- **Etapa 4**: generar JPG por mula, envío conjunto JPG + .mule, eliminar PDF del recorrido de captura.
+- **Etapa 5**: selección/exclusión de fichas e informes PDF administrativos.
+- **Etapa 6**: pruebas en Android físico (texto ampliado, teclado, fotos, icono del lanzador y modo oscuro), conservación de datos al actualizar, firma y empaquetado ZIP final.
+
+La etapa 3 se cierra por implementación, análisis, pruebas Flutter y compilación Android. No se declara efectuada la prueba física: forma parte de la etapa 6. El repositorio original MuleAgent permanece intacto.

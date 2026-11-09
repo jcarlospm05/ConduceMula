@@ -61,7 +61,7 @@ Tractor de patio (mule truck) de la foto aprobada, vista de tres cuartos, cabina
 
 ## Aplicación en código
 
-Tokens preparados en apps/operador/lib/design/mule_tokens.dart. En la etapa 1 no se conectan a las pantallas existentes: la aplicación de temas y componentes pertenece a la etapa 3. Las medidas son parámetros de implementación, no una medición exacta del mockup.
+Tokens preparados en `apps/operador/lib/design/mule_tokens.dart` durante la etapa 1 y **aplicados a la aplicación unificada durante la etapa 3** mediante `mule_theme.dart`. `MuleTruckLogo` carga el PNG aprobado `LOGO_MULEAGENT_V1` desde los assets Flutter, y el icono de Android usa el mismo recurso. Las medidas son parámetros de implementación, no una medición exacta del mockup. Ver `ETAPA-3.md` para pruebas y límites de validación.
 
 ## Recurso final aprobado (ConduceMula)
 
