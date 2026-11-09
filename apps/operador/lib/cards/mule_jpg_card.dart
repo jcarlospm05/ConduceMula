@@ -55,7 +55,7 @@ Future<Uint8List> renderMuleJpgCard({
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   final paper = Paint()..color = white;
-  canvas.drawRect(const Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), paper);
+  canvas.drawRect(Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()), paper);
 
   void rectangle(Rect rect, Color color, {double radius = 0}) {
     canvas.drawRRect(
@@ -101,7 +101,7 @@ Future<Uint8List> renderMuleJpgCard({
   }
 
   // Encabezado según INTERFAZ_MULEAGENT_V1.
-  rectangle(const Rect.fromLTWH(0, 0, width.toDouble(), 210), navy);
+  rectangle(Rect.fromLTWH(0, 0, width.toDouble(), 210), navy);
   final stageName = session.stage == Stage.entry ? 'ENTRADA' : 'SALIDA';
   if (session.stage == Stage.exit) {
     rectangle(const Rect.fromLTWH(0, 201, width.toDouble(), 9), orange);
