@@ -71,7 +71,8 @@ void main() {
       await tester.pumpWidget(MuleAgentApp(bundle: installation.bundle));
       await settle(tester);
       expect(find.text('Administrador'), findsOneWidget);
-      expect(find.text('Entrada de mulas'), findsOneWidget);
+      // An open entry is now surfaced as Continuar entrada (Etapa 3).
+      expect(find.text('Continuar entrada'), findsOneWidget);
       await tester.ensureVisible(find.text('Cambiar a Supervisor'));
       await tester.tap(find.text('Cambiar a Supervisor'));
       await settle(tester);
