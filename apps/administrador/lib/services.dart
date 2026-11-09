@@ -133,6 +133,9 @@ class AdminServices {
         continue;
       }
       final session = await capture.sessionById(row['id'] as String);
+      // La recepción/consolidación de fichas JPG pertenece a la etapa 5.
+      // No generar un PDF heredado para los cierres nuevos.
+      if (await storage.hasNewDelivery(session)) continue;
       final artifacts = await storage.ensureArtifacts(session);
       final payload = await storage.includeFiles(
         await capture.snapshot(revisionId: session.id),

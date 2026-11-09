@@ -651,8 +651,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
       case 'publicReports':
         return stack([
           title('Carpeta de reportes', 'Descargas/MuleAgent'),
-          const Text(
-            'Cada cierre guarda automáticamente su PDF, archivo .mule y fotos originales, por fecha e inicio/salida. Puedes encontrarlos en la aplicación Archivos del teléfono. Se conservan aunque no envíes por WhatsApp.',
+          Text(
+            widget.muleStyle
+                ? 'Cada cierre guarda automáticamente una ficha JPG por mula, el archivo .mule y las fotos originales por fecha, etapa y revisión. Se conservan aunque no compartas.'
+                : 'Cada cierre guarda automáticamente su PDF, archivo .mule y fotos originales, por fecha e inicio/salida. Puedes encontrarlos en la aplicación Archivos del teléfono. Se conservan aunque no envíes por WhatsApp.',
           ),
           const SizedBox(height: 16),
           primary(
@@ -730,7 +732,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Cerrar ${stageTitle(session!.stage).toLowerCase()}',
-            '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
+            widget.muleStyle
+                ? '${session!.date} · ${rows.length} fichas. Se guardará un JPG por mula, el paquete .mule cifrado y las fotografías originales en Descargas/MuleAgent.'
+                : '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
           ),
           primary(
             'Cerrar y preparar archivos',
@@ -742,8 +746,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
               await load();
               publicFolder = await services!.savePublicReport(session!);
               notice = publicFolder == null
-                  ? 'Etapa cerrada. Los archivos están listos.'
-                  : 'Cierre guardado automáticamente en $publicFolder';
+                  ? 'Jornada cerrada. Los archivos están preparados.'
+                  : widget.muleStyle
+                      ? 'Guardado en Descargas/MuleAgent'
+                      : 'Cierre guardado automáticamente en $publicFolder';
             }),
           ),
         ]);
@@ -753,38 +759,42 @@ class _OperatorScreenState extends State<OperatorScreen> {
             session!.stage == Stage.entry
                 ? 'Entrada cerrada'
                 : widget.muleStyle ? 'Salida cerrada' : 'Despacho cerrado',
-            '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
-                ? publicFolder == null
-                      ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
-                      : 'PDF, .mule y fotos originales guardados en $publicFolder'
-                : 'Los archivos de esta revisión se conservan para reenviarlos.'}',
+            widget.muleStyle
+                ? '${session!.date} · ${rows.length} fichas. ${publicFolder == null ? 'Los originales se conservan; recupera la copia desde Carpeta de reportes si fuese necesario.' : 'JPG, .mule y fotos originales guardados en Descargas/MuleAgent.'}'
+                : '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
+                    ? publicFolder == null
+                          ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
+                          : 'PDF, .mule y fotos originales guardados en $publicFolder'
+                    : 'Los archivos de esta revisión se conservan para reenviarlos.'}',
           ),
           primary(
             'Compartir por WhatsApp',
             () => act(() async {
               await services!.share(session!);
-              notice =
-                  'Se abrió el flujo de compartir. Elige WhatsApp y comprueba ambos adjuntos. La app no confirma entrega.';
+              if (!widget.muleStyle) {
+                notice = 'Se abrió el flujo de compartir.';
+              }
             }),
           ),
-          secondary(
-            'Ver e imprimir PDF',
-            () => act(() => services!.previewPdf(session!)),
-          ),
-          if (services?.publicStorageEnabled == true)
+          if (!widget.muleStyle)
+            secondary(
+              'Ver e imprimir PDF',
+              () => act(() => services!.previewPdf(session!)),
+            ),
+          if (!widget.muleStyle && services?.publicStorageEnabled == true)
             secondary(
               'Guardar copia en Descargas',
               () => act(() async {
                 publicFolder = await services!.savePublicReport(session!);
-                notice =
-                    'PDF, .mule y fotos originales verificados en $publicFolder';
+                notice = 'PDF, .mule y fotos originales verificados en $publicFolder';
               }),
               icon: Icons.folder_copy_outlined,
             ),
-          secondary(
-            'Guardar PDF y archivo cifrado',
-            () => act(() => services!.exportArtifacts(session!)),
-          ),
+          if (!widget.muleStyle)
+            secondary(
+              'Guardar PDF y archivo cifrado',
+              () => act(() => services!.exportArtifacts(session!)),
+            ),
           secondary('Ver fichas y fotos', () => go('details')),
           secondary(
             'Continuar esta jornada',
