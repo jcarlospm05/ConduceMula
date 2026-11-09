@@ -368,51 +368,103 @@ class _OperatorScreenState extends State<OperatorScreen> {
     return Icons.arrow_forward_rounded;
   }
 
-  Widget buttonContents(String label, IconData icon, {bool large = false}) =>
+  Widget buttonContents(
+    String label,
+    IconData icon, {
+    bool large = false,
+    bool pendingDot = false,
+  }) => Stack(
+    clipBehavior: Clip.none,
+    children: [
       Row(
         children: [
-          Icon(icon, size: large ? 30 : 26),
+          Icon(icon, size: large ? 30 : 24),
           const SizedBox(width: 14),
           Expanded(child: Text(label, textAlign: TextAlign.center)),
-          SizedBox(width: large ? 30 : 26),
+          SizedBox(width: large ? 30 : 24),
         ],
-      );
+      ),
+      if (pendingDot)
+        Positioned(
+          right: 2,
+          top: -8,
+          child: Semantics(
+            label: 'Proceso pendiente',
+            child: const CircleAvatar(
+              radius: 5,
+              backgroundColor: MulePalette.pending,
+            ),
+          ),
+        ),
+    ],
+  );
+
   Widget primary(
     String label,
     VoidCallback action, {
     IconData? icon,
     double height = 80,
+    bool exitAction = false,
+    bool pendingDot = false,
   }) => FilledButton(
     onPressed: busy ? null : action,
     style: FilledButton.styleFrom(
-      minimumSize: Size(double.infinity, height),
+      minimumSize: Size(double.infinity, widget.muleStyle ? height.clamp(72, 120).toDouble() : height),
+      backgroundColor: widget.muleStyle && exitAction
+          ? MulePalette.orange
+          : null,
+      foregroundColor: widget.muleStyle && exitAction ? Colors.white : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
     ),
-    child: buttonContents(label, icon ?? actionIcon(label), large: true),
+    child: buttonContents(
+      label,
+      icon ?? actionIcon(label),
+      large: true,
+      pendingDot: widget.muleStyle && pendingDot,
+    ),
   );
-  Widget secondary(String label, VoidCallback action, {IconData? icon}) =>
-      Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: OutlinedButton(
-          onPressed: busy ? null : action,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 64),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            foregroundColor: const Color(0xFF21355E),
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
-            textStyle: const TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+
+  Widget secondary(String label, VoidCallback action, {IconData? icon}) {
+    if (widget.muleStyle) {
+      return Column(
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            minVerticalPadding: 8,
+            minTileHeight: MuleMetrics.secondaryMinHeight,
+            leading: Icon(icon ?? actionIcon(label), size: 22),
+            title: Text(label),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: busy ? null : action,
           ),
-          child: buttonContents(label, icon ?? actionIcon(label)),
-        ),
+          const Divider(height: 1),
+        ],
       );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: OutlinedButton(
+        onPressed: busy ? null : action,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 64),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          foregroundColor: const Color(0xFF21355E),
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
+          textStyle: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: buttonContents(label, icon ?? actionIcon(label)),
+      ),
+    );
+  }
+
   Widget title(String text, [String? hint]) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -512,21 +564,60 @@ class _OperatorScreenState extends State<OperatorScreen> {
         ]);
       case 'home':
         return stack([
+          if (widget.muleStyle)
+            for (final stage in [Stage.entry, Stage.exit])
+              if (hasOpen(stage))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: const Border(
+                        left: BorderSide(color: MulePalette.cyan, width: 3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${stageTitle(stage)} en proceso',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('Continúa para agregar mulas o cerrar'),
+                      ],
+                    ),
+                  ),
+                ),
           primary(
-            'Entrada de mulas',
-            () => choose(Stage.entry),
+            widget.muleStyle && hasOpen(Stage.entry)
+                ? 'Continuar entrada'
+                : 'Entrada de mulas',
+            widget.muleStyle
+                ? () => openStage(Stage.entry)
+                : () => choose(Stage.entry),
             icon: Icons.login_rounded,
             height: 96,
+            pendingDot: hasOpen(Stage.entry),
           ),
           const SizedBox(height: 16),
           primary(
-            'Despacho mulas',
-            () => choose(Stage.exit),
-            icon: Icons.local_shipping_outlined,
+            widget.muleStyle
+                ? hasOpen(Stage.exit) ? 'Continuar salida' : 'Salida de mula'
+                : 'Despacho mulas',
+            widget.muleStyle
+                ? () => openStage(Stage.exit)
+                : () => choose(Stage.exit),
+            icon: widget.muleStyle
+                ? Icons.logout_rounded
+                : Icons.local_shipping_outlined,
             height: 96,
+            exitAction: widget.muleStyle,
+            pendingDot: hasOpen(Stage.exit),
           ),
-          const SizedBox(height: 14),
-          if (session != null)
+          SizedBox(height: widget.muleStyle ? 40 : 14),
+          if (!widget.muleStyle && session != null)
             secondary(
               'Continuar proceso pendiente',
               () => act(load),
