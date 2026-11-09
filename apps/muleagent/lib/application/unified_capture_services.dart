@@ -87,8 +87,6 @@ class UnifiedCaptureServices extends OperatorServices {
     return result;
   }
 
-  final ProfileRepository profiles;
-  final AdminRepository admin;
   AdminServices get administration =>
       AdminServices(admin, repo, this, access: profiles);
 
