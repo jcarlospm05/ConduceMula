@@ -15,6 +15,7 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'report_filename.dart';
+import 'cards/jpg_card_files.dart';
 import 'public_reports.dart';
 import 'package:flutter/services.dart';
 import 'security/package_crypto.dart';
@@ -144,6 +145,15 @@ class OperatorServices {
 
   Future<void> previewPhoto(String relative, void Function(File) show) async =>
       show(file(relative));
+
+  /// Etapa 4: generador privado independiente; aún no altera el flujo público.
+  Future<List<JpgTicketArtifact>> ensureJpgCards(
+    CaptureSession session, {
+    Uint8List? officialLogo,
+  }) => JpgCardFiles(repo, _fileStore).ensureCards(
+    session,
+    officialLogo: officialLogo,
+  );
 
   Future<Map<String, Object?>> ensureArtifacts(CaptureSession session) async {
     final existing = await repo.db.query(
