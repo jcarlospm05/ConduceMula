@@ -1,6 +1,7 @@
 import 'package:administrador/incoming.dart';
 import 'package:administrador/services.dart';
 import 'package:flutter/material.dart';
+import 'package:operador/design/mule_truck_logo.dart';
 
 import '../application/unified_bundle.dart';
 
@@ -10,9 +11,11 @@ class ReceivedReportsScreen extends StatefulWidget {
     super.key,
     required this.bundle,
     this.incomingPath,
+    this.onThemeToggle,
   });
   final UnifiedBundle bundle;
   final String? incomingPath;
+  final VoidCallback? onThemeToggle;
   @override
   State<ReceivedReportsScreen> createState() => _ReceivedReportsScreenState();
 }
@@ -108,13 +111,42 @@ class _ReceivedReportsScreenState extends State<ReceivedReportsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Recibir reportes')),
+    appBar: AppBar(
+      titleSpacing: 24,
+      title: const Row(
+        children: [
+          MuleTruckLogo(size: 40),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('MuleAgent', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text('Administrador', style: TextStyle(fontSize: 14)),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        if (widget.onThemeToggle != null)
+          IconButton(
+            onPressed: widget.onThemeToggle,
+            tooltip: 'Cambiar tema',
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+          ),
+      ],
+    ),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           const Text(
-            'Administrador',
+            'Recibir reportes',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
