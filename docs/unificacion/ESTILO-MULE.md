@@ -57,8 +57,14 @@ Avisos: guardado breve, pequeño y verde apagado, por ejemplo “Guardado en Des
 
 ### Logo
 
-Tractor de patio (mule truck) de la foto aprobada, vista de tres cuartos, cabina blanca, cristales y chasis oscuros, baliza naranja, sin remolque ni marca del fabricante. Caricatura realista con formas limpias y acabado vectorial, reconocible a tamaño pequeño. El SVG final todavía debe crearse; las imágenes de propuesta no son un recurso vectorial listo para la app.
+Tractor de patio (mule truck) de la foto aprobada, vista de tres cuartos, cabina blanca, cristales y chasis oscuros, baliza naranja, sin remolque ni marca del fabricante. Caricatura realista con formas limpias y acabado vectorial, reconocible a tamaño pequeño. La imagen PNG final está aprobada como **LOGO_MULEAGENT_V1**, con placa frontal azul oscura y una M amarilla. No crear una recreación vectorial para sustituirla. Se conserva la imagen sin modificaciones; recursos oficiales en `apps/operador/assets/LOGO_MULEAGENT_V1.png` y en el lanzador de `apps/muleagent/android`.
 
 ## Aplicación en código
 
 Tokens preparados en apps/operador/lib/design/mule_tokens.dart. En la etapa 1 no se conectan a las pantallas existentes: la aplicación de temas y componentes pertenece a la etapa 3. Las medidas son parámetros de implementación, no una medición exacta del mockup.
+
+## Recurso final aprobado (ConduceMula)
+
+Variable **LOGO_MULEAGENT_V1**; imagen original en Google Drive: https://drive.google.com/file/d/1sr6T0fWAIpCj3QLsfAG_rnE0gf3P7rJp/view
+
+No alterar geometría, colores, fondo ni placa con M amarilla; usar el mismo PNG tanto en Supervisor como en Administrador. El anterior dibujo provisional de tractor no es la referencia aprobada.
