@@ -78,7 +78,7 @@ void main() {
       (p) => (p['delivery'] as Map)['stage'] = 'exit',
       (p) => (p['delivery'] as Map)['supervisor'] = '',
       (p) => ((p['delivery'] as Map)['cards'] as List).add(
-        Map.from(((p['delivery'] as Map)['cards'] as List).first as Map),
+        Map<String, String>.from(((p['delivery'] as Map)['cards'] as List).first as Map),
       ),
       (p) => (p['delivery'] as Map)['cards'] = [],
     ]) {
