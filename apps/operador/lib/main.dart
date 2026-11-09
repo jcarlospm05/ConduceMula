@@ -346,6 +346,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final text = label.toLowerCase();
     if (text.startsWith('cerrar')) return Icons.task_alt_rounded;
     if (text.contains('entrada')) return Icons.login_rounded;
+    if (text.contains('salida')) return Icons.logout_outlined;
     if (text.contains('despacho')) return Icons.local_shipping_outlined;
     if (text.contains('whatsapp') || text.contains('compartir')) {
       return Icons.share_outlined;
@@ -670,16 +671,21 @@ class _OperatorScreenState extends State<OperatorScreen> {
           title('¿Qué vas a registrar?'),
           primary(
             'Entrada de mulas',
-            () => choose(Stage.entry),
+            () => openStage(Stage.entry),
             icon: Icons.login_rounded,
             height: 96,
+            pendingDot: hasOpen(Stage.entry),
           ),
           const SizedBox(height: 16),
           primary(
-            'Despacho mulas',
-            () => choose(Stage.exit),
-            icon: Icons.local_shipping_outlined,
+            widget.muleStyle ? 'Salida de mula' : 'Despacho mulas',
+            () => openStage(Stage.exit),
+            icon: widget.muleStyle
+                ? Icons.logout_rounded
+                : Icons.local_shipping_outlined,
             height: 96,
+            exitAction: widget.muleStyle,
+            pendingDot: hasOpen(Stage.exit),
           ),
         ]);
       case 'date':
@@ -813,7 +819,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           ...items.map(
             (row) => ListTile(
               title: Text(
-                '${Stage.values.byName(row['stage'] as String).label} · ${row['operational_date']}',
+                '${stageTitle(Stage.values.byName(row['stage'] as String))} · ${row['operational_date']}',
               ),
               subtitle: Text('Revisión ${row['number']}'),
               trailing: const Icon(Icons.chevron_right),
