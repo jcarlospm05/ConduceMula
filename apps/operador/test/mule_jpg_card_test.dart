@@ -75,12 +75,13 @@ void main() {
       }
     });
     expect(result, isNotNull);
-    expect(result!['count'], 1);
-    expect(result['name'], startsWith('ficha_salida_2026-11-09_r1_000362_'));
-    expect(result['name'], endsWith('.jpg'));
-    expect(result['sha'], result['secondSha']);
-    expect(result['originalPreserved'], isTrue);
-    final image = image_codec.decodeJpg(result['image'] as Uint8List);
+    final completed = result!;
+    expect(completed['count'], 1);
+    expect(completed['name'], startsWith('ficha_salida_2026-11-09_r1_000362_'));
+    expect(completed['name'], endsWith('.jpg'));
+    expect(completed['sha'], completed['secondSha']);
+    expect(completed['originalPreserved'], isTrue);
+    final image = image_codec.decodeJpg(completed['image'] as Uint8List);
     expect(image, isNotNull);
     expect(image!.width, 1200);
     expect(image.height, 1740);
