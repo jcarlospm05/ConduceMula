@@ -8,9 +8,11 @@ class ProfileSetupScreen extends StatelessWidget {
     required this.busy,
     required this.onSelected,
     this.error,
+    this.onThemeToggle,
   });
   final bool busy;
   final String? error;
+  final VoidCallback? onThemeToggle;
   final Future<void> Function(AppRole) onSelected;
 
   Future<void> choose(BuildContext context, AppRole role) async {
@@ -47,14 +49,26 @@ class ProfileSetupScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Row(
+            Row(
               children: [
-                MuleTruckLogo(),
-                SizedBox(width: 16),
-                Text(
-                  'MuleAgent',
-                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                const MuleTruckLogo(),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Text(
+                    'MuleAgent',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                  ),
                 ),
+                if (onThemeToggle != null)
+                  IconButton(
+                    tooltip: 'Cambiar tema',
+                    onPressed: onThemeToggle,
+                    icon: Icon(
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Icons.light_mode_outlined
+                          : Icons.dark_mode_outlined,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 48),
