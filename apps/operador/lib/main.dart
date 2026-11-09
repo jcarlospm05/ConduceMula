@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mule_data/mule_data.dart';
 import 'database.dart';
@@ -7,6 +8,8 @@ import 'services.dart';
 import 'motion.dart';
 import 'brand.dart';
 import 'design/legacy_theme.dart';
+import 'design/mule_tokens.dart';
+import 'design/mule_truck_logo.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +38,8 @@ class OperatorScreen extends StatefulWidget {
     this.onExit,
     this.homeActions,
     this.onConfigured,
+    this.muleStyle = false,
+    this.onThemeToggle,
   });
   final CaptureRepository? repository;
   final OperatorServices? captureServices;
@@ -43,6 +48,8 @@ class OperatorScreen extends StatefulWidget {
   final VoidCallback? onExit;
   final List<Widget> Function(BuildContext)? homeActions;
   final VoidCallback? onConfigured;
+  final bool muleStyle;
+  final VoidCallback? onThemeToggle;
   @override
   State<OperatorScreen> createState() => _OperatorScreenState();
 }
@@ -53,12 +60,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
   CaptureSession? session;
   Draft? draft;
   final input = TextEditingController();
+  final timeHour = TextEditingController();
+  final timeMinute = TextEditingController();
+  final captureFocus = FocusNode();
+  final minuteFocus = FocusNode();
   Future<void> pending = Future.value();
   String screen = 'home';
   String? error, notice, publicFolder;
   bool busy = true, closed = false;
   bool reverseMotion = false;
-  List<Map<String, Object?>> rows = [], items = [];
+  List<Map<String, Object?>> rows = [], items = [], openSessions = [];
   Stage chosenStage = Stage.entry;
   DateTime chosenDate = DateTime.now();
   String setupName = '', setupKey = '';
@@ -93,6 +104,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         screen = 'setupName';
       }
       session = await repo!.resume();
+      openSessions = await repo!.sessions(closed: false);
       if (services?.publicStorageEnabled == true) {
         try {
           final recovered = await services!.recoverPublicReports();
@@ -114,6 +126,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
   @override
   void dispose() {
     input.dispose();
+    timeHour.dispose();
+    timeMinute.dispose();
+    captureFocus.dispose();
+    minuteFocus.dispose();
     super.dispose();
   }
 
@@ -141,7 +157,15 @@ class _OperatorScreenState extends State<OperatorScreen> {
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        if (widget.muleStyle && screen == 'capture' && draft != null &&
+            draft!.fields[draft!.step].column != 'omission_reason') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) captureFocus.requestFocus();
+          });
+        }
+      }
     }
   }
 
@@ -155,6 +179,12 @@ class _OperatorScreenState extends State<OperatorScreen> {
     draft = closed ? null : await repo!.draft(session!);
     rows = await repo!.tickets(session!);
     input.text = draft?.value ?? '';
+    if (draft != null && draft!.fields[draft!.step].column == 'time') {
+      final parts = input.text.split(':');
+      timeHour.text = parts.isNotEmpty ? parts[0] : '';
+      timeMinute.text = parts.length > 1 ? parts[1] : '';
+    }
+    openSessions = await repo!.sessions(closed: false);
     publicFolder = closed && services?.publicStorageEnabled == true
         ? await services!.publicFolder(session!)
         : null;
@@ -163,6 +193,42 @@ class _OperatorScreenState extends State<OperatorScreen> {
         : draft == null
         ? 'review'
         : 'capture';
+  }
+
+  bool hasOpen(Stage stage) =>
+      openSessions.any((row) => row['stage'] == stage.name);
+
+  String stageTitle(Stage stage) => widget.muleStyle && stage == Stage.exit
+      ? 'Salida'
+      : stage.label;
+
+  void openStage(Stage stage) {
+    for (final row in openSessions) {
+      if (row['stage'] == stage.name) {
+        act(() async {
+          session = await repo!.sessionById(row['id'] as String);
+          await load();
+        });
+        return;
+      }
+    }
+    choose(stage);
+  }
+
+  String formattedTime() {
+    final hours = int.tryParse(timeHour.text.trim());
+    final minutes = int.tryParse(timeMinute.text.trim());
+    if (hours != null && minutes != null &&
+        hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+    }
+    return '${timeHour.text}:${timeMinute.text}';
+  }
+
+  void timeChanged() {
+    final value = formattedTime();
+    input.text = value;
+    changed(value);
   }
 
   void changed(String value) {
@@ -186,6 +252,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final isPhoto =
         field.column == 'omission_reason' &&
         draft!.values['evidence_state'] == 'photo';
+    if (field.column == 'time' && widget.muleStyle) {
+      input.text = formattedTime();
+    }
     final validation = isPhoto ? null : field.validate(input.text);
     if (validation != null) {
       setState(() => error = validation);
@@ -277,6 +346,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final text = label.toLowerCase();
     if (text.startsWith('cerrar')) return Icons.task_alt_rounded;
     if (text.contains('entrada')) return Icons.login_rounded;
+    if (text.contains('salida')) return Icons.logout_outlined;
     if (text.contains('despacho')) return Icons.local_shipping_outlined;
     if (text.contains('whatsapp') || text.contains('compartir')) {
       return Icons.share_outlined;
@@ -299,51 +369,103 @@ class _OperatorScreenState extends State<OperatorScreen> {
     return Icons.arrow_forward_rounded;
   }
 
-  Widget buttonContents(String label, IconData icon, {bool large = false}) =>
+  Widget buttonContents(
+    String label,
+    IconData icon, {
+    bool large = false,
+    bool pendingDot = false,
+  }) => Stack(
+    clipBehavior: Clip.none,
+    children: [
       Row(
         children: [
-          Icon(icon, size: large ? 30 : 26),
+          Icon(icon, size: large ? 30 : 24),
           const SizedBox(width: 14),
           Expanded(child: Text(label, textAlign: TextAlign.center)),
-          SizedBox(width: large ? 30 : 26),
+          SizedBox(width: large ? 30 : 24),
         ],
-      );
+      ),
+      if (pendingDot)
+        Positioned(
+          right: 2,
+          top: -8,
+          child: Semantics(
+            label: 'Proceso pendiente',
+            child: const CircleAvatar(
+              radius: 5,
+              backgroundColor: MulePalette.pending,
+            ),
+          ),
+        ),
+    ],
+  );
+
   Widget primary(
     String label,
     VoidCallback action, {
     IconData? icon,
     double height = 80,
+    bool exitAction = false,
+    bool pendingDot = false,
   }) => FilledButton(
     onPressed: busy ? null : action,
     style: FilledButton.styleFrom(
-      minimumSize: Size(double.infinity, height),
+      minimumSize: Size(double.infinity, widget.muleStyle ? height.clamp(72, 120).toDouble() : height),
+      backgroundColor: widget.muleStyle && exitAction
+          ? MulePalette.orange
+          : null,
+      foregroundColor: widget.muleStyle && exitAction ? Colors.white : null,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
     ),
-    child: buttonContents(label, icon ?? actionIcon(label), large: true),
+    child: buttonContents(
+      label,
+      icon ?? actionIcon(label),
+      large: true,
+      pendingDot: widget.muleStyle && pendingDot,
+    ),
   );
-  Widget secondary(String label, VoidCallback action, {IconData? icon}) =>
-      Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: OutlinedButton(
-          onPressed: busy ? null : action,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 64),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            foregroundColor: const Color(0xFF21355E),
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
-            textStyle: const TextStyle(
-              fontFamily: 'Roboto',
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+
+  Widget secondary(String label, VoidCallback action, {IconData? icon}) {
+    if (widget.muleStyle) {
+      return Column(
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            minVerticalPadding: 8,
+            minTileHeight: MuleMetrics.secondaryMinHeight,
+            leading: Icon(icon ?? actionIcon(label), size: 22),
+            title: Text(label),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: busy ? null : action,
           ),
-          child: buttonContents(label, icon ?? actionIcon(label)),
-        ),
+          const Divider(height: 1),
+        ],
       );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: OutlinedButton(
+        onPressed: busy ? null : action,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 64),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          foregroundColor: const Color(0xFF21355E),
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
+          textStyle: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: buttonContents(label, icon ?? actionIcon(label)),
+      ),
+    );
+  }
+
   Widget title(String text, [String? hint]) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -443,21 +565,60 @@ class _OperatorScreenState extends State<OperatorScreen> {
         ]);
       case 'home':
         return stack([
+          if (widget.muleStyle)
+            for (final stage in [Stage.entry, Stage.exit])
+              if (hasOpen(stage))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: const Border(
+                        left: BorderSide(color: MulePalette.cyan, width: 3),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${stageTitle(stage)} en proceso',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        const Text('Continúa para agregar mulas o cerrar'),
+                      ],
+                    ),
+                  ),
+                ),
           primary(
-            'Entrada de mulas',
-            () => choose(Stage.entry),
+            widget.muleStyle && hasOpen(Stage.entry)
+                ? 'Continuar entrada'
+                : 'Entrada de mulas',
+            widget.muleStyle
+                ? () => openStage(Stage.entry)
+                : () => choose(Stage.entry),
             icon: Icons.login_rounded,
             height: 96,
+            pendingDot: hasOpen(Stage.entry),
           ),
           const SizedBox(height: 16),
           primary(
-            'Despacho mulas',
-            () => choose(Stage.exit),
-            icon: Icons.local_shipping_outlined,
+            widget.muleStyle
+                ? hasOpen(Stage.exit) ? 'Continuar salida' : 'Salida de mula'
+                : 'Despacho mulas',
+            widget.muleStyle
+                ? () => openStage(Stage.exit)
+                : () => choose(Stage.exit),
+            icon: widget.muleStyle
+                ? Icons.logout_rounded
+                : Icons.local_shipping_outlined,
             height: 96,
+            exitAction: widget.muleStyle,
+            pendingDot: hasOpen(Stage.exit),
           ),
-          const SizedBox(height: 14),
-          if (session != null)
+          SizedBox(height: widget.muleStyle ? 40 : 14),
+          if (!widget.muleStyle && session != null)
             secondary(
               'Continuar proceso pendiente',
               () => act(load),
@@ -510,23 +671,28 @@ class _OperatorScreenState extends State<OperatorScreen> {
           title('¿Qué vas a registrar?'),
           primary(
             'Entrada de mulas',
-            () => choose(Stage.entry),
+            () => openStage(Stage.entry),
             icon: Icons.login_rounded,
             height: 96,
+            pendingDot: hasOpen(Stage.entry),
           ),
           const SizedBox(height: 16),
           primary(
-            'Despacho mulas',
-            () => choose(Stage.exit),
-            icon: Icons.local_shipping_outlined,
+            widget.muleStyle ? 'Salida de mula' : 'Despacho mulas',
+            () => openStage(Stage.exit),
+            icon: widget.muleStyle
+                ? Icons.logout_rounded
+                : Icons.local_shipping_outlined,
             height: 96,
+            exitAction: widget.muleStyle,
+            pendingDot: hasOpen(Stage.exit),
           ),
         ]);
       case 'date':
         return stack([
           title(
             'Fecha de la jornada',
-            '${chosenStage.label} · ${chosenDate.day}/${chosenDate.month}/${chosenDate.year}',
+            '${stageTitle(chosenStage)} · ${chosenDate.day}/${chosenDate.month}/${chosenDate.year}',
           ),
           primary('Continuar', start),
           secondary('Cambiar fecha', () async {
@@ -543,7 +709,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return capture();
       case 'review':
         return stack([
-          Text('${session!.stage.label} · ${session!.date}'),
+          Text('${stageTitle(session!.stage)} · ${session!.date}'),
           const SizedBox(height: 16),
           title(
             '${rows.length} fichas registradas',
@@ -563,7 +729,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
       case 'confirmClose':
         return stack([
           title(
-            'Cerrar ${session!.stage.label.toLowerCase()}',
+            'Cerrar ${stageTitle(session!.stage).toLowerCase()}',
             '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
           ),
           primary(
@@ -586,7 +752,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           title(
             session!.stage == Stage.entry
                 ? 'Entrada cerrada'
-                : 'Despacho cerrado',
+                : widget.muleStyle ? 'Salida cerrada' : 'Despacho cerrado',
             '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
                 ? publicFolder == null
                       ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
@@ -640,7 +806,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Fichas y evidencias',
-            '${session!.stage.label} · ${session!.date}',
+            '${stageTitle(session!.stage)} · ${session!.date}',
           ),
           ...rows.map((r) => ticketTile(r)),
           secondary('Volver al reporte', () => go('closed')),
@@ -653,7 +819,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           ...items.map(
             (row) => ListTile(
               title: Text(
-                '${Stage.values.byName(row['stage'] as String).label} · ${row['operational_date']}',
+                '${stageTitle(Stage.values.byName(row['stage'] as String))} · ${row['operational_date']}',
               ),
               subtitle: Text('Revisión ${row['number']}'),
               trailing: const Icon(Icons.chevron_right),
@@ -718,12 +884,12 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final hasPhoto = draft!.values['evidence_state'] == 'photo';
     return stack([
       Text(
-        '${session!.stage.label} · ${draft!.step + 1} de ${draft!.fields.length}',
+        '${stageTitle(session!.stage)} · ${draft!.step + 1} de ${draft!.fields.length}',
       ),
       const SizedBox(height: 16),
       LinearProgressIndicator(
         value: (draft!.step + 1) / draft!.fields.length,
-        color: const Color(0xFF966018),
+        color: widget.muleStyle ? MulePalette.cyan : const Color(0xFF966018),
         semanticsLabel: 'Progreso de captura',
       ),
       const SizedBox(height: 28),
@@ -780,16 +946,88 @@ class _OperatorScreenState extends State<OperatorScreen> {
           hasPhoto ||
           services == null ||
           draft!.values['evidence_state'] == 'omitted')
-        primary(photoStep ? 'Guardar ficha' : 'Siguiente', next),
+        if (!widget.muleStyle)
+          primary(photoStep ? 'Guardar ficha' : 'Siguiente', next),
     ]);
   }
 
+  bool get captureContinueVisible {
+    if (screen != 'capture' || draft == null) return false;
+    final column = draft!.fields[draft!.step].column;
+    return column != 'omission_reason' ||
+        draft!.values['evidence_state'] == 'photo' ||
+        services == null ||
+        draft!.values['evidence_state'] == 'omitted';
+  }
+
+  Widget timeInput() => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: TextField(
+          key: const Key('mule-hour'),
+          controller: timeHour,
+          focusNode: captureFocus,
+          enabled: !busy,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(2),
+          ],
+          style: const TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: const InputDecoration(labelText: 'Hora'),
+          onChanged: (_) => timeChanged(),
+          onEditingComplete: () => minuteFocus.requestFocus(),
+        ),
+      ),
+      const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 25),
+        child: Text(
+          ':',
+          style: TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      Expanded(
+        child: TextField(
+          key: const Key('mule-minute'),
+          controller: timeMinute,
+          focusNode: minuteFocus,
+          enabled: !busy,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.next,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(2),
+          ],
+          style: const TextStyle(
+            fontSize: MuleTypography.timeValueSize,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: const InputDecoration(labelText: 'Minutos'),
+          onChanged: (_) => timeChanged(),
+          onEditingComplete: () {},
+          onSubmitted: (_) => next(),
+        ),
+      ),
+    ],
+  );
+
   Widget captureInput(CaptureField f) {
+    if (widget.muleStyle && f.column == 'time') return timeInput();
     final child = TextField(
       key: ValueKey('${draft!.ticketId}:${draft!.step}'),
       controller: input,
+      focusNode: widget.muleStyle ? captureFocus : null,
       enabled: !busy,
       onChanged: changed,
+      onEditingComplete: widget.muleStyle ? () {} : null,
       onSubmitted: (_) => next(),
       textInputAction: TextInputAction.next,
       keyboardType: f.column == 'meter'
@@ -804,7 +1042,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
             : f.title,
       ),
     );
-    return f.column == 'meter'
+    return f.column == 'meter' && !widget.muleStyle
         ? MeterBorder(key: ValueKey(draft!.ticketId), child: child)
         : child;
   }
@@ -823,7 +1061,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const AppLogo(size: 40),
+                  if (widget.muleStyle)
+                     const MuleTruckLogo(size: 40)
+                   else
+                     const AppLogo(size: 40),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -860,6 +1101,25 @@ class _OperatorScreenState extends State<OperatorScreen> {
       child: stack([
         ListTile(
           contentPadding: EdgeInsets.zero,
+          leading: widget.muleStyle && row['evidence_state'] == 'photo' &&
+                  services != null && row['private_path'] is String
+              ? GestureDetector(
+                  onTap: () => showPhoto(
+                    services!.file(row['private_path'] as String),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      services!.file(row['private_path'] as String),
+                      width: 76,
+                      height: 72,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.broken_image_outlined),
+                    ),
+                  ),
+                )
+              : null,
           title: Text('${row['code']} · ${row['provider']}'),
           subtitle: Text(
             '${row['driver'] ?? ''}\n${row['time']} · ${row['meter']} h\n${row['evidence_state'] == 'photo' ? 'Foto disponible' : 'Foto omitida: ${row['omission_reason']}'}',
@@ -930,43 +1190,63 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         1.4 +
                     24)
                 .clamp(80, 240),
-        backgroundColor: const Color(0xFFFFFDF8),
+        backgroundColor: widget.muleStyle
+            ? Theme.of(context).scaffoldBackgroundColor
+            : const Color(0xFFFFFDF8),
         surfaceTintColor: Colors.transparent,
         titleSpacing: 24,
         title: Row(
           children: [
-            const AppLogo(),
+            if (widget.muleStyle)
+              const MuleTruckLogo()
+            else
+              const AppLogo(),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'MuleAgent',
                     style: TextStyle(
                       fontSize: 23,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF21355E),
+                      color: widget.muleStyle ? null : const Color(0xFF21355E),
                     ),
                   ),
                   Text(
                     widget.roleLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF4E5B73),
+                      color: widget.muleStyle
+                          ? Theme.of(context).textTheme.bodySmall?.color
+                          : const Color(0xFF4E5B73),
                     ),
                   ),
                 ],
               ),
             ),
+            if (widget.muleStyle && widget.onThemeToggle != null)
+              IconButton(
+                tooltip: 'Cambiar tema',
+                onPressed: widget.onThemeToggle,
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+              ),
           ],
         ),
       ),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
+        child: Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -1019,8 +1299,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         liveRegion: true,
                         child: Text(
                           error!,
-                          style: const TextStyle(
-                            color: Color(0xFF9D1D3C),
+                          style: TextStyle(
+                            color: widget.muleStyle
+                                ? Theme.of(context).colorScheme.error
+                                : const Color(0xFF9D1D3C),
                             fontSize: 18,
                           ),
                         ),
@@ -1033,7 +1315,14 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         liveRegion: true,
                         child: Text(
                           notice!,
-                          style: const TextStyle(color: Color(0xFF166443)),
+                          style: TextStyle(
+                             color: widget.muleStyle
+                                 ? Theme.of(context).brightness == Brightness.dark
+                                     ? MulePalette.successDarkText
+                                     : MulePalette.successLightText
+                                 : const Color(0xFF166443),
+                             fontSize: widget.muleStyle ? 14 : null,
+                           ),
                         ),
                       ),
                     ),
@@ -1046,6 +1335,20 @@ class _OperatorScreenState extends State<OperatorScreen> {
               ),
             ),
           ),
+              ),
+            ),
+            if (widget.muleStyle && captureContinueVisible)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: primary(
+                  draft!.fields[draft!.step].column == 'omission_reason'
+                      ? 'Guardar ficha'
+                      : 'Siguiente',
+                  next,
+                  height: 72,
+                ),
+              ),
+          ],
         ),
       ),
     ),

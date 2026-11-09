@@ -11,8 +11,9 @@ import '../receiving/received_reports_screen.dart';
 import 'unified_bundle.dart';
 
 class UnifiedShell extends StatefulWidget {
-  const UnifiedShell({super.key, this.bundle});
+  const UnifiedShell({super.key, this.bundle, this.onThemeChanged});
   final UnifiedBundle? bundle;
+  final ValueChanged<ThemeMode>? onThemeChanged;
   @override
   State<UnifiedShell> createState() => _UnifiedShellState();
 }
@@ -51,6 +52,14 @@ class _UnifiedShellState extends State<UnifiedShell> {
     try {
       bundle ??= widget.bundle ?? await UnifiedBundle.open();
       profile = await bundle!.profiles.load();
+      final selected = await bundle!.capture.setting('mule_theme_v1');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onThemeChanged?.call(
+            selected == 'dark' ? ThemeMode.dark : ThemeMode.light,
+          );
+        }
+      });
     } catch (e) {
       error = e is FormatException
           ? e.message
@@ -103,6 +112,24 @@ class _UnifiedShellState extends State<UnifiedShell> {
               ? e.message.toString()
               : 'No se pudo cambiar el perfil.',
         );
+      }
+    }
+  }
+
+  Future<void> toggleTheme() async {
+    try {
+      final next = Theme.of(context).brightness == Brightness.dark
+          ? ThemeMode.light
+          : ThemeMode.dark;
+      // Theme choice is ordinary local data; it never changes role capabilities.
+      await bundle!.capture.setSetting(
+        'mule_theme_v1',
+        next == ThemeMode.dark ? 'dark' : 'light',
+      );
+      widget.onThemeChanged?.call(next);
+    } catch (_) {
+      if (mounted) {
+        setState(() => notice = 'No se pudo guardar el tema. Inténtalo de nuevo.');
       }
     }
   }
@@ -180,7 +207,11 @@ class _UnifiedShellState extends State<UnifiedShell> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              ReceivedReportsScreen(bundle: bundle!, incomingPath: selected),
+              ReceivedReportsScreen(
+                bundle: bundle!,
+                incomingPath: selected,
+                onThemeToggle: toggleTheme,
+              ),
         ),
       );
     } on StateError catch (e) {
@@ -200,28 +231,28 @@ class _UnifiedShellState extends State<UnifiedShell> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(notice!),
       ),
-    if (profile!.canReceiveReports)
-      Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: OutlinedButton.icon(
-          onPressed: () => openReceiver(),
-          icon: const Icon(Icons.file_download_outlined),
-          label: const Text('Recibir reportes'),
-        ),
+    if (profile!.canReceiveReports) ...[
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.file_download_outlined),
+        title: const Text('Recibir reportes'),
+        onTap: openReceiver,
       ),
-    if (profile!.canSwitchRoles)
-      Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: OutlinedButton.icon(
-          onPressed: switchRole,
-          icon: const Icon(Icons.switch_account_outlined),
-          label: Text(
-            profile!.activeRole == AppRole.administrator
-                ? 'Cambiar a Supervisor'
-                : 'Volver a Administrador',
-          ),
+      const Divider(height: 1),
+    ],
+    if (profile!.canSwitchRoles) ...[
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(Icons.switch_account_outlined),
+        title: Text(
+          profile!.activeRole == AppRole.administrator
+              ? 'Cambiar a Supervisor'
+              : 'Volver a Administrador',
         ),
+        onTap: switchRole,
       ),
+      const Divider(height: 1),
+    ],
   ];
   @override
   Widget build(BuildContext context) {
@@ -253,6 +284,7 @@ class _UnifiedShellState extends State<UnifiedShell> {
       return ProfileSetupScreen(
         busy: choosing,
         onSelected: configure,
+        onThemeToggle: toggleTheme,
         error: error,
       );
     }
@@ -261,6 +293,8 @@ class _UnifiedShellState extends State<UnifiedShell> {
       repository: bundle!.capture,
       captureServices: bundle!.services,
       roleLabel: profile!.activeRole.label,
+      muleStyle: true,
+      onThemeToggle: toggleTheme,
       homeActions: homeActions,
       onConfigured: () => unawaited(offerIncoming()),
     );

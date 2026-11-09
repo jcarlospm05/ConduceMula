@@ -1,6 +1,12 @@
 name: MuleAgent modular
 on:
   push:
+    branches: [refactor/mule-unificada, feat/interfaz-muleagent-v1]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+  pull_request:
     branches: [refactor/mule-unificada]
     paths:
       - 'apps/**'
