@@ -4,6 +4,7 @@ import 'package:mule_data/mule_data.dart';
 import 'package:mule_profiles/mule_profiles.dart';
 import 'package:muleagent/main.dart';
 import 'package:operador/design/mule_tokens.dart';
+import 'package:operador/design/mule_truck_logo.dart';
 import 'package:operador/main.dart';
 
 import 'support.dart';
@@ -31,6 +32,16 @@ void main() {
     await tester.pumpWidget(MuleAgentApp(bundle: installation.bundle));
     await settleMule(tester);
     expect(find.byTooltip('Cambiar tema'), findsOneWidget);
+    expect(find.byType(MuleTruckLogo), findsOneWidget);
+    final logo = tester.widget<Image>(
+      find.descendant(
+        of: find.byType(MuleTruckLogo),
+        matching: find.byType(Image),
+      ),
+    );
+    final asset = logo.image as AssetImage;
+    expect(asset.assetName, 'assets/LOGO_MULEAGENT_V1.png');
+    expect(asset.package, 'operador');
     expect(find.text('Salida de mula'), findsOneWidget);
     final departure = find.ancestor(
       of: find.text('Salida de mula'),
