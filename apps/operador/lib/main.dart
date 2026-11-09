@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mule_data/mule_data.dart';
 import 'database.dart';
@@ -7,6 +8,8 @@ import 'services.dart';
 import 'motion.dart';
 import 'brand.dart';
 import 'design/legacy_theme.dart';
+import 'design/mule_tokens.dart';
+import 'design/mule_truck_logo.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +38,8 @@ class OperatorScreen extends StatefulWidget {
     this.onExit,
     this.homeActions,
     this.onConfigured,
+    this.muleStyle = false,
+    this.onThemeToggle,
   });
   final CaptureRepository? repository;
   final OperatorServices? captureServices;
@@ -43,6 +48,8 @@ class OperatorScreen extends StatefulWidget {
   final VoidCallback? onExit;
   final List<Widget> Function(BuildContext)? homeActions;
   final VoidCallback? onConfigured;
+  final bool muleStyle;
+  final VoidCallback? onThemeToggle;
   @override
   State<OperatorScreen> createState() => _OperatorScreenState();
 }
@@ -53,12 +60,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
   CaptureSession? session;
   Draft? draft;
   final input = TextEditingController();
+  final timeHour = TextEditingController();
+  final timeMinute = TextEditingController();
+  final captureFocus = FocusNode();
+  final minuteFocus = FocusNode();
   Future<void> pending = Future.value();
   String screen = 'home';
   String? error, notice, publicFolder;
   bool busy = true, closed = false;
   bool reverseMotion = false;
-  List<Map<String, Object?>> rows = [], items = [];
+  List<Map<String, Object?>> rows = [], items = [], openSessions = [];
   Stage chosenStage = Stage.entry;
   DateTime chosenDate = DateTime.now();
   String setupName = '', setupKey = '';
@@ -93,6 +104,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         screen = 'setupName';
       }
       session = await repo!.resume();
+      openSessions = await repo!.sessions(closed: false);
       if (services?.publicStorageEnabled == true) {
         try {
           final recovered = await services!.recoverPublicReports();
@@ -114,6 +126,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
   @override
   void dispose() {
     input.dispose();
+    timeHour.dispose();
+    timeMinute.dispose();
+    captureFocus.dispose();
+    minuteFocus.dispose();
     super.dispose();
   }
 
@@ -141,7 +157,15 @@ class _OperatorScreenState extends State<OperatorScreen> {
         });
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        if (widget.muleStyle && screen == 'capture' && draft != null &&
+            draft!.fields[draft!.step].column != 'omission_reason') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) captureFocus.requestFocus();
+          });
+        }
+      }
     }
   }
 
@@ -155,6 +179,12 @@ class _OperatorScreenState extends State<OperatorScreen> {
     draft = closed ? null : await repo!.draft(session!);
     rows = await repo!.tickets(session!);
     input.text = draft?.value ?? '';
+    if (draft != null && draft!.fields[draft!.step].column == 'time') {
+      final parts = input.text.split(':');
+      timeHour.text = parts.isNotEmpty ? parts[0] : '';
+      timeMinute.text = parts.length > 1 ? parts[1] : '';
+    }
+    openSessions = await repo!.sessions(closed: false);
     publicFolder = closed && services?.publicStorageEnabled == true
         ? await services!.publicFolder(session!)
         : null;
@@ -163,6 +193,42 @@ class _OperatorScreenState extends State<OperatorScreen> {
         : draft == null
         ? 'review'
         : 'capture';
+  }
+
+  bool hasOpen(Stage stage) =>
+      openSessions.any((row) => row['stage'] == stage.name);
+
+  String stageTitle(Stage stage) => widget.muleStyle && stage == Stage.exit
+      ? 'Salida'
+      : stage.label;
+
+  void openStage(Stage stage) {
+    for (final row in openSessions) {
+      if (row['stage'] == stage.name) {
+        act(() async {
+          session = await repo!.sessionById(row['id'] as String);
+          await load();
+        });
+        return;
+      }
+    }
+    choose(stage);
+  }
+
+  String formattedTime() {
+    final hours = int.tryParse(timeHour.text.trim());
+    final minutes = int.tryParse(timeMinute.text.trim());
+    if (hours != null && minutes != null &&
+        hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+      return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
+    }
+    return '${timeHour.text}:${timeMinute.text}';
+  }
+
+  void timeChanged() {
+    final value = formattedTime();
+    input.text = value;
+    changed(value);
   }
 
   void changed(String value) {
@@ -186,6 +252,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
     final isPhoto =
         field.column == 'omission_reason' &&
         draft!.values['evidence_state'] == 'photo';
+    if (field.column == 'time' && widget.muleStyle) {
+      input.text = formattedTime();
+    }
     final validation = isPhoto ? null : field.validate(input.text);
     if (validation != null) {
       setState(() => error = validation);
