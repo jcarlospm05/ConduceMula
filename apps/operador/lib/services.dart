@@ -155,6 +155,10 @@ class OperatorServices {
     officialLogo: officialLogo,
   );
 
+  /// The older Operator app retains PDF exports. Unified capture overrides
+  /// this flag so Administrator does not silently regenerate legacy PDFs.
+  Future<bool> hasNewDelivery(CaptureSession session) async => false;
+
   Future<Map<String, Object?>> ensureArtifacts(CaptureSession session) async {
     final existing = await repo.db.query(
       'artifacts',
