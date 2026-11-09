@@ -79,7 +79,7 @@ class PublicReports(private val activity: Activity, messenger: BinaryMessenger) 
     }
 
     private fun prepare(result: MethodChannel.Result) = run(result) {
-        val bytes = "MuleAgent: copias automáticas de cierres.\nPor fecha y etapa: PDF, archivo cifrado .mule y fotos originales.\nConserva estos archivos y respaldos fuera del teléfono.\n".toByteArray(Charsets.UTF_8)
+        val bytes = "MuleAgent: copias automáticas de cierres.\nPor fecha y etapa: fichas JPG, paquete cifrado .mule y fotos originales. Los cierres anteriores pueden incluir PDF.\nConserva estos archivos y respaldos fuera del teléfono.\n".toByteArray(Charsets.UTF_8)
         publish("MuleAgent", "LEEME.txt", "text/plain", digest(bytes.inputStream())) { bytes.inputStream() }
         "Descargas/MuleAgent"
     }
