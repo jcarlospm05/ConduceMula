@@ -144,10 +144,15 @@ void main() {
       messenger.setMockMethodCallHandler(PublicReports.channel, null);
     });
 
-    await expectLater(
-      tester.runAsync(() => svc.savePublicReport(sample.session)),
-      throwsA(isA<StateError>()),
-    );
+    final failedSafely = await tester.runAsync(() async {
+      try {
+        await svc.savePublicReport(sample.session);
+        return false;
+      } on StateError {
+        return true;
+      }
+    });
+    expect(failedSafely, isTrue);
     expect(await tester.runAsync(() => svc.publicFolder(sample.session)), isNull);
 
     fail = false;
