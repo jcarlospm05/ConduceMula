@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image;
 import 'package:mule_data/mule_data.dart';
 import 'package:muleagent/application/unified_capture_services.dart';
-import 'package:operador/delivery/mule_delivery.dart';
 import 'package:operador/public_reports.dart';
 import 'package:operador/services.dart';
 
@@ -62,7 +60,7 @@ void main() {
       final installation = await TestInstallation.create();
       try {
         final sample = await closeSample(installation);
-        final svc = installation.bundle.services;
+        final svc = installation.bundle.services as UnifiedCaptureServices;
         final first = await svc.delivery.ensureBundle(sample.session);
         final second = await svc.delivery.ensureBundle(sample.session);
         final package = await svc.file(first.packagePath).readAsBytes();
@@ -177,14 +175,14 @@ void main() {
       final target = await TestInstallation.create();
       try {
         final sample = await closeSample(source);
-        final bundle = await source.bundle.services.delivery
-            .ensureBundle(sample.session);
+        final bundle = await (source.bundle.services as UnifiedCaptureServices)
+            .delivery.ensureBundle(sample.session);
         final backup = await source.bundle.services.includeFiles(
           await source.bundle.capture.snapshot(),
         );
         await target.bundle.services.restorePayload(backup);
-        final restored = await target.bundle.services.delivery
-            .savedBundle(sample.session);
+        final restored = await (target.bundle.services as UnifiedCaptureServices)
+            .delivery.savedBundle(sample.session);
         return {
           'found': restored != null,
           'sameHash': restored?.packageSha256 == bundle.packageSha256,
