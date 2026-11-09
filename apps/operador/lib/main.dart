@@ -686,7 +686,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Fecha de la jornada',
-            '${chosenStage.label} · ${chosenDate.day}/${chosenDate.month}/${chosenDate.year}',
+            '${stageTitle(chosenStage)} · ${chosenDate.day}/${chosenDate.month}/${chosenDate.year}',
           ),
           primary('Continuar', start),
           secondary('Cambiar fecha', () async {
@@ -703,7 +703,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return capture();
       case 'review':
         return stack([
-          Text('${session!.stage.label} · ${session!.date}'),
+          Text('${stageTitle(session!.stage)} · ${session!.date}'),
           const SizedBox(height: 16),
           title(
             '${rows.length} fichas registradas',
@@ -723,7 +723,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
       case 'confirmClose':
         return stack([
           title(
-            'Cerrar ${session!.stage.label.toLowerCase()}',
+            'Cerrar ${stageTitle(session!.stage).toLowerCase()}',
             '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
           ),
           primary(
@@ -746,7 +746,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           title(
             session!.stage == Stage.entry
                 ? 'Entrada cerrada'
-                : 'Despacho cerrado',
+                : widget.muleStyle ? 'Salida cerrada' : 'Despacho cerrado',
             '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
                 ? publicFolder == null
                       ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
@@ -800,7 +800,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Fichas y evidencias',
-            '${session!.stage.label} · ${session!.date}',
+            '${stageTitle(session!.stage)} · ${session!.date}',
           ),
           ...rows.map((r) => ticketTile(r)),
           secondary('Volver al reporte', () => go('closed')),
@@ -1036,7 +1036,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
             : f.title,
       ),
     );
-    return f.column == 'meter'
+    return f.column == 'meter' && !widget.muleStyle
         ? MeterBorder(key: ValueKey(draft!.ticketId), child: child)
         : child;
   }
@@ -1055,7 +1055,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const AppLogo(size: 40),
+                  if (widget.muleStyle)
+                     const MuleTruckLogo(size: 40)
+                   else
+                     const AppLogo(size: 40),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -1304,7 +1307,14 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         liveRegion: true,
                         child: Text(
                           notice!,
-                          style: const TextStyle(color: Color(0xFF166443)),
+                          style: TextStyle(
+                             color: widget.muleStyle
+                                 ? Theme.of(context).brightness == Brightness.dark
+                                     ? MulePalette.successDarkText
+                                     : MulePalette.successLightText
+                                 : const Color(0xFF166443),
+                             fontSize: widget.muleStyle ? 14 : null,
+                           ),
                         ),
                       ),
                     ),
