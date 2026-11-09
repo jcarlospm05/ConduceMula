@@ -91,7 +91,7 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 1. **Separación inicial y acuerdos**: extraer rutas/escritura privada, manifiestos de adjuntos y funciones de cifrado; preparar tokens de diseño sin aplicarlos. Verificar recorridos existentes. Estado: completada y verificada localmente (12 pruebas de captura/almacenamiento y 3 de interoperabilidad/interfaz del receptor; ambos análisis sin incidencias).
 2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. Completada: 52 pruebas y compilación Android aprobadas en CI (código 73dc6d1845409913e079999ca059a3cac0bc3ab8). Detalle en ETAPA-2.md.
 3. **Estilo Mule y captura**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #1. Temas claro/oscuro persistentes, logo PNG oficial `LOGO_MULEAGENT_V1` sin modificación, inicio/continuación, salida naranja, puntos pendientes, teclado/hora separada y miniaturas. **54 pruebas y análisis sin incidencias + APK debug unificada compilada** (CI 42680728689). Detalle en ETAPA-3.md. La validación física permanece en la etapa 6.
-4. **JPG + .mule**: **EN DESARROLLO** en ConduceMula, rama `feat/fichas-jpg-envio-v1`. Checkpoint 4.1: generador JPG por mula con identidad estable, foto sin recorte, originales intactos y tests; ver `ETAPA-4.md`. Pendientes: manifiesto cifrado, guardado público, envío conjunto, reenvío y retirada de PDF del recorrido nuevo.
+4. **JPG + .mule**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #2. JPG por mula con logo aprobado, paquete `.mule` cifrado sin PDF nuevo, guardado verificado en Descargas, reenvío de JPG + `.mule`, recuperación y respaldo de originales. **60 pruebas, análisis sin incidencias y APK debug unificada compilada** (CI 42693235907). Ver `ETAPA-4.md`.
 5. **Administrador simplificado**: recepción múltiple por fecha/etapa, consolidación, exclusión reversible y PDF administrativo; retirar Excel/cruces de las rutas visibles.
 6. **Verificación y entrega**: actualizaciones con datos existentes, compatibilidad, Android/WhatsApp/archivos, firmas y APK única en ZIP.
 
@@ -99,7 +99,7 @@ Cada etapa tendrá su propio cambio y resumen. Una etapa técnica aprobada no eq
 
 ## Próximo punto de reanudación
 
-**Continuar checkpoint 4.2** en `feat/fichas-jpg-envio-v1`, repo ConduceMula. Integrar fichas JPG al contrato y guardado sin PDF nuevo, luego compartir JPG + .mule y reenviar. No modificar originales ni romper archivos/respaldos históricos. Ver `ETAPA-4.md`. La validación Android físico y WhatsApp queda en la etapa 6.
+**Iniciar etapa 5** desde `refactor/mule-unificada` en **ConduceMula**. Etapa 4 cerrada y verificada (ver `ETAPA-4.md`). Actualizar el receptor Administrador para los `.mule` nuevos con JPG, añadir importación de imágenes por fecha/etapa, varios supervisores, exclusiones reversibles, avisos de jornada incompleta y PDF de entrada/salida. Retirar Excel/cruces visibles. Los paquetes antiguos con PDF se mantienen legibles. Probar WhatsApp y APK firmada en etapa 6.
 
 
 ## Checkpoint 1: estructura real
