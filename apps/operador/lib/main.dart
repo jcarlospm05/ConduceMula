@@ -1299,8 +1299,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         liveRegion: true,
                         child: Text(
                           error!,
-                          style: const TextStyle(
-                            color: Color(0xFF9D1D3C),
+                          style: TextStyle(
+                            color: widget.muleStyle
+                                ? Theme.of(context).colorScheme.error
+                                : const Color(0xFF9D1D3C),
                             fontSize: 18,
                           ),
                         ),
