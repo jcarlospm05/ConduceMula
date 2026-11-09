@@ -207,7 +207,11 @@ class _UnifiedShellState extends State<UnifiedShell> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) =>
-              ReceivedReportsScreen(bundle: bundle!, incomingPath: selected),
+              ReceivedReportsScreen(
+                bundle: bundle!,
+                incomingPath: selected,
+                onThemeToggle: toggleTheme,
+              ),
         ),
       );
     } on StateError catch (e) {
@@ -280,6 +284,7 @@ class _UnifiedShellState extends State<UnifiedShell> {
       return ProfileSetupScreen(
         busy: choosing,
         onSelected: configure,
+        onThemeToggle: toggleTheme,
         error: error,
       );
     }
