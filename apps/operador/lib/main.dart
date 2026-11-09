@@ -1198,7 +1198,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'MuleAgent',
                     style: TextStyle(
                       fontSize: 23,
@@ -1233,8 +1233,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
       ),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
+        child: Column(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: BoxConstraints(
@@ -1314,6 +1317,20 @@ class _OperatorScreenState extends State<OperatorScreen> {
               ),
             ),
           ),
+              ),
+            ),
+            if (widget.muleStyle && captureContinueVisible)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                child: primary(
+                  draft!.fields[draft!.step].column == 'omission_reason'
+                      ? 'Guardar ficha'
+                      : 'Siguiente',
+                  next,
+                  height: 72,
+                ),
+              ),
+          ],
         ),
       ),
     ),
