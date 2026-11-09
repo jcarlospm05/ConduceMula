@@ -1092,6 +1092,25 @@ class _OperatorScreenState extends State<OperatorScreen> {
       child: stack([
         ListTile(
           contentPadding: EdgeInsets.zero,
+          leading: widget.muleStyle && row['evidence_state'] == 'photo' &&
+                  services != null && row['private_path'] is String
+              ? GestureDetector(
+                  onTap: () => showPhoto(
+                    services!.file(row['private_path'] as String),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      services!.file(row['private_path'] as String),
+                      width: 76,
+                      height: 72,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.broken_image_outlined),
+                    ),
+                  ),
+                )
+              : null,
           title: Text('${row['code']} · ${row['provider']}'),
           subtitle: Text(
             '${row['driver'] ?? ''}\n${row['time']} · ${row['meter']} h\n${row['evidence_state'] == 'photo' ? 'Foto disponible' : 'Foto omitida: ${row['omission_reason']}'}',
@@ -1162,12 +1181,17 @@ class _OperatorScreenState extends State<OperatorScreen> {
                         1.4 +
                     24)
                 .clamp(80, 240),
-        backgroundColor: const Color(0xFFFFFDF8),
+        backgroundColor: widget.muleStyle
+            ? Theme.of(context).scaffoldBackgroundColor
+            : const Color(0xFFFFFDF8),
         surfaceTintColor: Colors.transparent,
         titleSpacing: 24,
         title: Row(
           children: [
-            const AppLogo(),
+            if (widget.muleStyle)
+              const MuleTruckLogo()
+            else
+              const AppLogo(),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -1179,19 +1203,31 @@ class _OperatorScreenState extends State<OperatorScreen> {
                     style: TextStyle(
                       fontSize: 23,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF21355E),
+                      color: widget.muleStyle ? null : const Color(0xFF21355E),
                     ),
                   ),
                   Text(
                     widget.roleLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: Color(0xFF4E5B73),
+                      color: widget.muleStyle
+                          ? Theme.of(context).textTheme.bodySmall?.color
+                          : const Color(0xFF4E5B73),
                     ),
                   ),
                 ],
               ),
             ),
+            if (widget.muleStyle && widget.onThemeToggle != null)
+              IconButton(
+                tooltip: 'Cambiar tema',
+                onPressed: widget.onThemeToggle,
+                icon: Icon(
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                ),
+              ),
           ],
         ),
       ),
