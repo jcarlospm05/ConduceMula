@@ -104,9 +104,9 @@ Future<Uint8List> renderMuleJpgCard({
   rectangle(Rect.fromLTWH(0, 0, width.toDouble(), 210), navy);
   final stageName = session.stage == Stage.entry ? 'ENTRADA' : 'SALIDA';
   if (session.stage == Stage.exit) {
-    rectangle(const Rect.fromLTWH(0, 201, width.toDouble(), 9), orange);
+    rectangle(Rect.fromLTWH(0, 201, width.toDouble(), 9), orange);
   } else {
-    rectangle(const Rect.fromLTWH(0, 201, width.toDouble(), 9), cyan);
+    rectangle(Rect.fromLTWH(0, 201, width.toDouble(), 9), cyan);
   }
   if (officialLogo != null && officialLogo.isNotEmpty) {
     final codec = await ui.instantiateImageCodec(officialLogo, targetWidth: 170);
