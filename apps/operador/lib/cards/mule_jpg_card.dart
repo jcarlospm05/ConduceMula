@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:image/image.dart' as image_codec;
 import 'package:mule_data/mule_data.dart';
 
@@ -23,7 +22,6 @@ Future<Uint8List> renderMuleJpgCard({
   const width = 1200;
   const height = 1740;
   const navy = Color(0xFF0B132B);
-  const deep = Color(0xFF1C2541);
   const cyan = Color(0xFF5BC0DE);
   const cream = Color(0xFFF4D6B0);
   const subdued = Color(0xFF596273);
