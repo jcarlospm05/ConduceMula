@@ -6,6 +6,12 @@ on:
       - 'apps/**'
       - 'packages/**'
       - '.github/workflows/**'
+  pull_request:
+    branches: [refactor/mule-unificada]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
   workflow_dispatch:
 permissions:
   contents: read
