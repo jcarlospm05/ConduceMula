@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mule_profiles/mule_profiles.dart';
-import 'package:operador/brand.dart';
+import 'package:operador/design/mule_truck_logo.dart';
 
 class ProfileSetupScreen extends StatelessWidget {
   const ProfileSetupScreen({
@@ -49,7 +49,7 @@ class ProfileSetupScreen extends StatelessWidget {
           children: [
             const Row(
               children: [
-                AppLogo(),
+                MuleTruckLogo(),
                 SizedBox(width: 16),
                 Text(
                   'MuleAgent',
