@@ -93,13 +93,13 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 3. **Estilo Mule y captura**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #1. Temas claro/oscuro persistentes, logo PNG oficial `LOGO_MULEAGENT_V1` sin modificación, inicio/continuación, salida naranja, puntos pendientes, teclado/hora separada y miniaturas. **54 pruebas y análisis sin incidencias + APK debug unificada compilada** (CI 42680728689). Detalle en ETAPA-3.md. La validación física permanece en la etapa 6.
 4. **JPG + .mule**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #2. JPG por mula con logo aprobado, paquete `.mule` cifrado sin PDF nuevo, guardado verificado en Descargas, reenvío de JPG + `.mule`, recuperación y respaldo de originales. **60 pruebas, análisis sin incidencias y APK debug unificada compilada** (CI 42693235907). Ver `ETAPA-4.md`.
 5. **Administrador simplificado — TERMINADA**: recepción de `.mule` JPG v2 y PDF histórico, JPG independientes por fecha/etapa, consolidación por supervisor, duplicados y avisos, exclusión/reinclusión, PDF administrativo y respaldo/restauración. Sin Excel ni cruces en la nueva interfaz. Tres workflows GitHub en verde; ver `ETAPA-5.md`.
-6. **Verificación y entrega**: actualizaciones con datos existentes, compatibilidad, Android/WhatsApp/archivos, firmas y APK única en ZIP.
+6. **Verificación y entrega — EN DESARROLLO**: rama `feat/etapa6-validacion-apk` en ConduceMula. Corrige conteo de fichas incluidas por etapa, añade controles de identidad/firma de APK, empaquetado ZIP candidato con hashes y guía de campo, y firma release solo con secretos GitHub. Pruebas de teléfono/WhatsApp, compatibilidad de certificado y liberación de producción pendientes; ver `ETAPA-6.md`.
 
 Cada etapa tendrá su propio cambio y resumen. Una etapa técnica aprobada no equivale a la app unificada terminada. La versión distribuida permanece 1.0.3 hasta producir una entrega funcional nueva.
 
 ## Próximo punto de reanudación
 
-**Etapa 5 cerrada. Iniciar etapa 6** desde `refactor/mule-unificada` en **ConduceMula**. Administrador simplificado integrado y probado; ver `ETAPA-5.md`. Pendientes exclusivamente de etapa 6: actualización y recuperación de datos en dispositivo, roles, envío WhatsApp real, temas, firma Android y APK final en ZIP.
+**Etapa 6 en curso** en `feat/etapa6-validacion-apk` del repositorio ConduceMula. Ejecutar CI de compilación y empaquetado, inspeccionar `apksigner` y distribuir únicamente un ZIP debug identificado como prueba. Antes de producción: contar con firma de la APK antigua para actualizar sin borrar datos, registrar pruebas Android/WhatsApp en teléfono físico y generar ZIP release firmado por secretos. Ver `ETAPA-6.md`.
 
 
 ## Checkpoint 1: estructura real
