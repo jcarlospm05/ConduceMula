@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:admin_data/admin_data.dart';
 import 'package:file_picker/file_picker.dart';
@@ -189,7 +188,9 @@ class Stage5AdminServices {
       final session = await capture.sessionById(row['id'] as String);
       if (!await storage.hasNewDelivery(session)) continue;
       if ((await repo.db.query('admin_jpg_revisions',
-          where: 'id=?', whereArgs: [session.id])).isNotEmpty) continue;
+          where: 'id=?', whereArgs: [session.id])).isNotEmpty) {
+        continue;
+      }
       final bundle = await delivery.ensureBundle(session);
       final encrypted = await storage.file(bundle.packagePath).readAsBytes();
       final payload = await compute(decryptPayload, {
