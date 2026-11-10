@@ -1,0 +1,181 @@
+name: MuleAgent ARM64 optimizado release
+on:
+  push:
+    branches: [feat/etapa6-validacion-apk]
+    paths:
+      - '.github/workflows/muleagent-optimized-prod-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: muleagent-arm64-optimized-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      APK_BASENAME: MuleAgent-ConduceMula-1.2.2-arm64-release.apk
+      TAG: conducemula-v1.2.2-arm64-release-candidate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify Dart and Flutter source
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd packages/mule_profiles && dart pub get && dart analyze && dart test)
+          (cd packages/mule_data && dart pub get && dart analyze && dart test)
+          (cd packages/admin_data && dart pub get && dart analyze && dart test)
+          (cd apps/operador && flutter pub get && flutter analyze && flutter test --timeout=120s)
+          (cd apps/administrador && flutter pub get && flutter analyze && flutter test --timeout=120s)
+          (cd apps/muleagent && flutter pub get && flutter analyze && flutter test --timeout=120s)
+      - name: Restore stable release credentials when available
+        id: creds
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.MULEAGENT_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.MULEAGENT_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/muleagent-signing.jks"
+            test -s "$RUNNER_TEMP/muleagent-signing.jks"
+            echo "source=STABLE_USER_KEYSTORE" >> "$GITHUB_OUTPUT"
+            echo "storepass=$STORE_PASSWORD" >> "$GITHUB_OUTPUT"
+            echo "alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
+            echo "keypass=$KEY_PASSWORD" >> "$GITHUB_OUTPUT"
+          else
+            # An installable optimized release-mode binary can still be
+            # produced for acceptance, but MUST NOT be called production.
+            passwd="$(openssl rand -hex 32)"
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/muleagent-signing.jks" \
+              -storetype PKCS12 -alias muleagenttest \
+              -keyalg RSA -keysize 3072 -validity 365 \
+              -dname "CN=MuleAgent Field Test, O=MuleAgent, C=DO" \
+              -storepass "$passwd" -keypass "$passwd" -noprompt >/dev/null 2>&1
+            echo "source=EPHEMERAL_FIELD_TEST_KEY" >> "$GITHUB_OUTPUT"
+            echo "storepass=$passwd" >> "$GITHUB_OUTPUT"
+            echo "alias=muleagenttest" >> "$GITHUB_OUTPUT"
+            echo "keypass=$passwd" >> "$GITHUB_OUTPUT"
+            echo "::warning::No permanent user-owned signing secrets were configured. Candidate is NOT a final production APK and cannot be safely upgraded without a signing key backup."
+          fi
+      - name: Build compact non-debuggable ARM64 release APK
+        working-directory: apps/muleagent
+        env:
+          MULEAGENT_RELEASE_KEYSTORE: ${{ runner.temp }}/muleagent-signing.jks
+          MULEAGENT_RELEASE_STORE_PASSWORD: ${{ steps.creds.outputs.storepass }}
+          MULEAGENT_RELEASE_KEY_ALIAS: ${{ steps.creds.outputs.alias }}
+          MULEAGENT_RELEASE_KEY_PASSWORD: ${{ steps.creds.outputs.keypass }}
+        run: |
+          set -euo pipefail
+          flutter build apk --release --split-per-abi \
+            --build-name=1.2.2 --build-number=9 \
+            --obfuscate --split-debug-info=build/symbols
+      - name: Verify compact signed release artifact
+        working-directory: apps/muleagent
+        shell: bash
+        env:
+          SIGN_SOURCE: ${{ steps.creds.outputs.source }}
+          EXPECTED_SIGNER_SHA256: ${{ vars.MULEAGENT_EXPECTED_RELEASE_SHA256 }}
+        run: |
+          set -euo pipefail
+          apk=build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          test -s "$apk"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          mkdir -p build/publish
+          "$signer" verify --verbose --print-certs "$apk" | tee build/publish/CERTIFICATE.txt
+          "$aapt" dump badging "$apk" | tee build/publish/ANDROID_BADGING.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='2009' versionName='1.2.2'" build/publish/ANDROID_BADGING.txt
+          if grep -q application-debuggable build/publish/ANDROID_BADGING.txt; then
+            echo "::error::Release must not be debuggable"
+            exit 1
+          fi
+          unzip -Z1 "$apk" | grep -q '^lib/arm64-v8a/'
+          if unzip -Z1 "$apk" | grep -Eq '^lib/(x86_64|armeabi-v7a)/'; then
+            echo "::error::APK includes unnecessary CPU architectures"
+            exit 1
+          fi
+          bytes=$(stat -c%s "$apk")
+          echo "APK_BYTES=$bytes" >> "$GITHUB_ENV"
+          echo "APK size bytes: $bytes"
+          test "$bytes" -lt 90000000
+          if [[ "$SIGN_SOURCE" == STABLE_USER_KEYSTORE && -z "$EXPECTED_SIGNER_SHA256" ]]; then
+            echo "::error::Stable production signing requires a pinned expected signer SHA256"
+            exit 1
+          fi
+          if [[ "$SIGN_SOURCE" == STABLE_USER_KEYSTORE ]]; then
+            actual="$(sed -n -E 's/.*(V2 Signer|Signer #1): certificate SHA-256 digest: ([a-fA-F0-9]{64}).*/\2/p' build/publish/CERTIFICATE.txt | head -n 1)"
+            if [[ "${actual,,}" != "${EXPECTED_SIGNER_SHA256,,}" ]]; then
+              echo "::error::Signer mismatch"
+              exit 1
+            fi
+          fi
+          cp "$apk" "build/publish/$APK_BASENAME"
+          (cd build/publish && sha256sum "$APK_BASENAME" > SHA256SUMS.txt)
+          printf '%s\n' "$SIGN_SOURCE" > build/publish/SIGNING_STATUS.txt
+          echo "SOURCE_SHA=$GITHUB_SHA" >> "$GITHUB_ENV"
+      - name: Store APK and symbols independently
+        uses: actions/upload-artifact@v4
+        with:
+          name: MuleAgent-Optimized-ARM64-Release-1.2.2
+          path: |
+            apps/muleagent/build/publish/*
+            apps/muleagent/build/symbols/*
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish direct APK without ZIP as a field-test release candidate
+        shell: bash
+        env:
+          SIGN_SOURCE: ${{ steps.creds.outputs.source }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp
+          cat > /tmp/notes.md <<EOF
+          # MuleAgent ConduceMula 1.2.2 — release ARM64 optimized
+          
+          This is a non-debuggable, optimized Flutter release-mode APK for 64-bit ARM Android. It keeps existing SQLite, photos, reports, encryption and Supervisor/Administrator features.
+          
+          Size: $APK_BYTES bytes (must be under 90 MB).
+          Signer source: $SIGN_SOURCE.
+          Source commit: $SOURCE_SHA.
+          
+          IMPORTANT: A production rollout is NOT approved until stable signing is established and physical Android/WhatsApp + data migration tests pass. If signer source is EPHEMERAL_FIELD_TEST_KEY, this APK is ONLY for field acceptance: do not install over an existing app without a verified backup; the key will not survive this build and future upgrades cannot use it.
+          
+          Download the attached APK directly. SHA256SUMS.txt and certificate metadata are provided.
+          EOF
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" \
+              "apps/muleagent/build/publish/$APK_BASENAME" \
+              apps/muleagent/build/publish/SHA256SUMS.txt \
+              apps/muleagent/build/publish/CERTIFICATE.txt \
+              apps/muleagent/build/publish/SIGNING_STATUS.txt \
+              --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" \
+              "apps/muleagent/build/publish/$APK_BASENAME" \
+              apps/muleagent/build/publish/SHA256SUMS.txt \
+              apps/muleagent/build/publish/CERTIFICATE.txt \
+              apps/muleagent/build/publish/SIGNING_STATUS.txt \
+              -R "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "ConduceMula 1.2.2 · ARM64 optimizada (pendiente pruebas)" \
+              --notes-file /tmp/notes.md --prerelease
+          fi
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json url,assets
+      - name: Delete signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/muleagent-signing.jks"
