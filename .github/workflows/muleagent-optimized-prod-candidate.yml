@@ -132,7 +132,6 @@ jobs:
           retention-days: 30
       - name: Publish direct APK without ZIP as a field-test release candidate
         shell: bash
-        env:
         run: |
           set -euo pipefail
           mkdir -p /tmp
