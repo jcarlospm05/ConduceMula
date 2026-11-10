@@ -1,7 +1,7 @@
 name: MuleAgent modular
 on:
   push:
-    branches: [refactor/mule-unificada, feat/interfaz-muleagent-v1]
+    branches: [refactor/mule-unificada, feat/interfaz-muleagent-v1, feat/etapa6-validacion-apk]
     paths:
       - 'apps/**'
       - 'packages/**'
