@@ -1,6 +1,6 @@
 # Etapa 6 — Validación final y APK única
 
-**Estado: EN DESARROLLO — compilación candidata y validaciones finales.**
+**Estado: CHECKPOINT TÉCNICO 6.1 VERIFICADO — aceptación Android física y firma definitiva pendientes.**
 **Repositorio oficial:** `jcarlospm05/ConduceMula` (no editar `jcarlospm05/MuleAgent`).
 **Base:** `refactor/mule-unificada` con etapas 1–5 integradas.
 **Rama:** `feat/etapa6-validacion-apk`.
@@ -52,3 +52,19 @@ El ZIP de GitHub Actions es una **APK de depuración para pruebas**, no una APK 
 5. Plan maestro actualizado e integración revisada en `refactor/mule-unificada`.
 
 No dar por finalizada la etapa 6 ni distribuir como producción una APK debug sin completar los puntos físicos y la firma correspondiente.
+
+
+## Evidencia de checkpoint técnico 6.1 — 10 de noviembre de 2026
+
+**GitHub Actions oficial:** https://github.com/jcarlospm05/ConduceMula/actions/runs/42795188150 — **success**.
+
+- 78 pruebas automatizadas aprobadas: perfiles (6), datos compartidos (12), datos administrativos (24), captura y guardado (15), receptor histórico (3), aplicación unificada, migración y aceptación (18).
+- Flutter Analyze de todos los módulos sin incidencias.
+- `flutter build apk --debug` completado; `apksigner` confirmó firma APK v2. `aapt` confirmó `com.muleagent.operador`, `versionName=1.2.0`, `versionCode=7`, Android minSdk 24.
+- Workflows independientes de Operador y Administrador: **success**.
+- APK candidata: `MuleAgent-ConduceMula-1.2.0-b7-rc6.apk`, SHA-256 `43ffc6bc6b9a88fe352d00e9b7c6f38385fdd0853f2e73dc2821a6cebd8ab452`.
+- Certificado debug de esta ejecución: SHA-256 `d0564b26e4095974f659eea1cfe2e42384d2341f963059b89e4f14cc959738ff`; **no se ha demostrado coincidencia con el certificado de una APK previamente instalada**.
+- ZIP con APK, certificado, hashes y guía: https://github.com/jcarlospm05/ConduceMula/actions/runs/42795188150/artifacts/13754510325 (artefacto GitHub Actions, retención de 30 días).
+- El ZIP y la APK descargados se verificaron por integridad con los checksums incluidos. La compilación de depuración usa una clave temporal de GitHub Actions.
+
+**Pendiente antes de marcar la etapa como TERMINADA:** realizar y registrar los casos de la matriz Android/WhatsApp en un dispositivo físico; determinar compatibilidad de certificado con la instalación anterior y validar respaldo/actualización sin perder datos; configurar firma de producción estable y ejecutar el flujo manual `.github/workflows/muleagent-signed-release.yml`. Ese workflow requiere secretos GitHub protegidos y disponibilidad de ejecución en la rama predeterminada. El APK candidato NO debe distribuirse como actualización de producción.
