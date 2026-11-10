@@ -87,7 +87,7 @@ jobs:
           mkdir -p build/release-candidate
           "$signer" verify --verbose --print-certs "$apk" | tee build/release-candidate/apk-certificate.txt
           "$aapt" dump badging "$apk" | tee build/release-candidate/apk-badging.txt
-          grep -q "package: name='com.muleagent.operador' versionCode='7' versionName='1.2.0'" build/release-candidate/apk-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='8' versionName='1.2.1'" build/release-candidate/apk-badging.txt
           grep -Eq "(V2 Signer|Signer #1): certificate SHA-256 digest:" build/release-candidate/apk-certificate.txt
       - name: Package stage 6 APK and test instructions
         shell: bash
