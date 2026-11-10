@@ -352,6 +352,21 @@ class Stage5AdminServices {
     if (!all.any((x) => x['stage'] == 'exit')) {
       notices.add('No hay reportes de salida recibidos para esta fecha.');
     }
+    // The difference is computed from included cards only. Equal quantities
+    // do not prove the identity of the mules; no automatic cross-matching.
+    final entries = all.where(
+      (x) => x['stage'] == 'entry' && x['included'] == true,
+    ).length;
+    final exits = all.where(
+      (x) => x['stage'] == 'exit' && x['included'] == true,
+    ).length;
+    if (all.any((x) => x['stage'] == 'entry') &&
+        all.any((x) => x['stage'] == 'exit') &&
+        entries != exits) {
+      notices.add('Jornada incompleta: $entries fichas de entrada y '
+          '$exits fichas de salida seleccionadas (diferencia '
+          '${(entries - exits).abs()}).');
+    }
     final duplicated = all.where(
       (x) => x['possible_duplicate'] == true,
     ).length;
