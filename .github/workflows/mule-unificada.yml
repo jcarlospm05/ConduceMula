@@ -73,6 +73,34 @@ jobs:
         run: |
           set -o pipefail
           flutter build apk --debug 2>&1 | tee build-check.log
+      - name: Verify APK signature and Android identity
+        working-directory: apps/muleagent
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=build/app/outputs/flutter-apk/app-debug.apk
+          test -s "$apk"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          test -n "$signer" && test -n "$aapt"
+          mkdir -p build/release-candidate
+          "$signer" verify --verbose --print-certs "$apk" | tee build/release-candidate/apk-certificate.txt
+          "$aapt" dump badging "$apk" | tee build/release-candidate/apk-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='7' versionName='1.2.0'" build/release-candidate/apk-badging.txt
+          grep -q "Signer #1 certificate SHA-256 digest:" build/release-candidate/apk-certificate.txt
+      - name: Package stage 6 APK and test instructions
+        shell: bash
+        env:
+          SIGNING_SOURCE: github-actions-ephemeral-debug-keystore
+        run: python3 scripts/package_muleagent_rc.py
+      - name: Retain APK ZIP for supervised Android field tests
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConduceMula-MuleAgent-Stage6-RC
+          path: apps/muleagent/build/release-candidate/*.zip
+          if-no-files-found: error
+          retention-days: 30
       - name: Retain native compile diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
