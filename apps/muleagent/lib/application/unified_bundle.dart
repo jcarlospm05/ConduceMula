@@ -21,6 +21,8 @@ class UnifiedBundle {
     final capture = await openRepository();
     try {
       await ensureAdminSchema(capture.db);
+      await ensureJpgInboxSchema(capture.db);
+      await ensureStage5ManagementSchema(capture.db);
       capture.operatorName = await capture.setting('operator') ?? '';
       final admin = AdminRepository(
         capture.db,

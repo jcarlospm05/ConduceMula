@@ -103,7 +103,7 @@ void main() {
       await tester.ensureVisible(find.text('Recibir reportes'));
       await tester.tap(find.text('Recibir reportes'));
       await settle(tester);
-      expect(find.text('Elegir archivo e importar'), findsOneWidget);
+      expect(find.text('Recibir archivo .mule'), findsOneWidget);
       expect(find.text('Cruce manual'), findsNothing);
       expect(find.textContaining('Excel'), findsNothing);
       expect(tester.takeException(), isNull);
