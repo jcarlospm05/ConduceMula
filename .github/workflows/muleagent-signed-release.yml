@@ -102,7 +102,7 @@ jobs:
           mkdir -p build/release-candidate
           "$signer" verify --verbose --print-certs "$apk" | tee build/release-candidate/apk-certificate.txt
           "$aapt" dump badging "$apk" | tee build/release-candidate/apk-badging.txt
-          grep -q "package: name='com.muleagent.operador' versionCode='7' versionName='1.2.0'" build/release-candidate/apk-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='8' versionName='1.2.1'" build/release-candidate/apk-badging.txt
           if grep -q "application-debuggable" build/release-candidate/apk-badging.txt; then
             echo "::error::A release APK cannot be debuggable"
             exit 1
