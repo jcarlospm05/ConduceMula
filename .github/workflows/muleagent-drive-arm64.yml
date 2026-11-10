@@ -31,6 +31,7 @@ jobs:
         run: |
           flutter pub get
           flutter build apk --debug --split-per-abi
+      # Flutter split-per-abi uses ABI_VERSION*1000 + buildNumber; ARM64 = 2008.
       - name: Verify installer is ARM64, installable and below Drive limit
         working-directory: apps/muleagent
         shell: bash
@@ -43,7 +44,7 @@ jobs:
           aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
           "$signer" verify --verbose --print-certs "$apk" | tee arm64-signature.txt
           "$aapt" dump badging "$apk" | tee arm64-badging.txt
-          grep -q "package: name='com.muleagent.operador' versionCode='8' versionName='1.2.1'" arm64-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='2008' versionName='1.2.1'" arm64-badging.txt
           unzip -Z1 "$apk" | grep -q '^lib/arm64-v8a/'
           if unzip -Z1 "$apk" | grep -Eq '^lib/(x86_64|armeabi-v7a)/'; then
             echo "Unexpected non-ARM64 native library in mobile APK" >&2
