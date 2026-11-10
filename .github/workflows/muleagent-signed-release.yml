@@ -1,0 +1,131 @@
+name: MuleAgent signed release (manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: muleagent-manual-release
+  cancel-in-progress: false
+
+jobs:
+  signed_release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Verify shared profiles
+        working-directory: packages/mule_profiles
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Verify shared capture data
+        working-directory: packages/mule_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Verify administration data
+        working-directory: packages/admin_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Verify capture and files
+        working-directory: apps/operador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Verify receiving and interoperability
+        working-directory: apps/administrador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Verify unified APK source
+        working-directory: apps/muleagent
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Restore user-owned keystore only from encrypted GitHub secrets
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.MULEAGENT_RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.MULEAGENT_RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          for variable in KEYSTORE_BASE64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+            if [[ -z "${!variable}" ]]; then
+              echo "::error::Missing required GitHub signing secret $variable"
+              exit 1
+            fi
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/muleagent-release.jks"
+          test -s "$RUNNER_TEMP/muleagent-release.jks"
+      - name: Compile signed non-debuggable APK
+        working-directory: apps/muleagent
+        env:
+          MULEAGENT_RELEASE_KEYSTORE: ${{ runner.temp }}/muleagent-release.jks
+          MULEAGENT_RELEASE_STORE_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_STORE_PASSWORD }}
+          MULEAGENT_RELEASE_KEY_ALIAS: ${{ secrets.MULEAGENT_RELEASE_KEY_ALIAS }}
+          MULEAGENT_RELEASE_KEY_PASSWORD: ${{ secrets.MULEAGENT_RELEASE_KEY_PASSWORD }}
+        run: flutter build apk --release
+      - name: Verify release certificate and Android identity
+        working-directory: apps/muleagent
+        shell: bash
+        env:
+          EXPECTED_SIGNER_SHA256: ${{ vars.MULEAGENT_EXPECTED_RELEASE_SHA256 }}
+        run: |
+          set -euo pipefail
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          test -n "$signer" && test -n "$aapt"
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          test -s "$apk"
+          mkdir -p build/release-candidate
+          "$signer" verify --verbose --print-certs "$apk" | tee build/release-candidate/apk-certificate.txt
+          "$aapt" dump badging "$apk" | tee build/release-candidate/apk-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='7' versionName='1.2.0'" build/release-candidate/apk-badging.txt
+          if grep -q "application-debuggable" build/release-candidate/apk-badging.txt; then
+            echo "::error::A release APK cannot be debuggable"
+            exit 1
+          fi
+          if [[ -n "$EXPECTED_SIGNER_SHA256" ]]; then
+            actual="$(sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' build/release-candidate/apk-certificate.txt | head -n 1)"
+            if [[ "${actual,,}" != "${EXPECTED_SIGNER_SHA256,,}" ]]; then
+              echo "::error::Release signing certificate is not the approved certificate"
+              exit 1
+            fi
+          fi
+      - name: Package signed release with manifest and checksum
+        env:
+          SIGNING_SOURCE: github-encrypted-release-secrets
+        run: python3 scripts/package_muleagent_rc.py --release
+      - name: Archive signed APK and ZIP for field acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConduceMula-MuleAgent-Signed-Release-Pending-Field-Test
+          path: apps/muleagent/build/release-candidate/*-signed.zip
+          if-no-files-found: error
+          retention-days: 30
+      - name: Delete temporary private signing key
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/muleagent-release.jks"
