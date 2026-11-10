@@ -73,6 +73,46 @@ class MuleDeliveryBundle {
   ];
 }
 
+/// Builds a homogeneous document-only share, so Android does not use the
+/// */* MIME type for a mixture of image/jpeg and application/octet-stream.
+/// WhatsApp may silently drop streams from that mixed-type intent while
+/// keeping EXTRA_TEXT. A JPG stays a JPEG on disk and keeps its .jpg name:
+/// this MIME label only selects document sharing rather than media sharing.
+///
+/// The receiving app ultimately controls which attachments it accepts;
+/// success still needs verification on a real Android/WhatsApp installation.
+ShareParams muleDocumentShareParams({
+  required CaptureSession session,
+  required MuleDeliveryBundle bundle,
+  required String Function(String) absolutePath,
+}) {
+  if (bundle.cards.isEmpty) {
+    throw StateError('No hay fichas JPG que compartir.');
+  }
+  final paths = <XFile>[];
+  final names = <String>[];
+  for (final card in bundle.cards) {
+    paths.add(XFile(absolutePath(card.path),
+        mimeType: 'application/octet-stream'));
+    names.add(card.name);
+  }
+  final base = reportFilenameBase(
+      session.stage, session.date, DateTime.parse(bundle.createdAt));
+  paths.add(XFile(absolutePath(bundle.packagePath),
+      mimeType: 'application/octet-stream'));
+  names.add('$base.mule');
+  if (names.toSet().length != names.length) {
+    throw StateError('Los adjuntos tienen nombres duplicados.');
+  }
+  return ShareParams(
+    subject: base,
+    files: paths,
+    fileNameOverrides: names,
+    // Do not set text: WhatsApp can otherwise send only EXTRA_TEXT and drop
+    // the mixed stream list without reporting failure.
+  );
+}
+
 /// Fichas JPG + archivo .mule cifrado. Se utiliza solo en la app unificada.
 /// La implementación histórica de OperatorServices sigue disponible para
 /// leer/restaurar los cierres antiguos sin crear PDF en los cierres nuevos.
@@ -269,29 +309,19 @@ class MuleDelivery {
     return count;
   }
 
-  /// Sharing JPGs and the single encrypted packet together. Original photos
-  /// are stored in Downloads, not added as redundant WhatsApp attachments.
+  /// Share all cards and their encrypted packet as documents, without
+  /// a text-only fallback. Copies in Downloads remain available for recovery.
   Future<void> share(CaptureSession session) async {
     await savePublic(session);
     final bundle = await ensureBundle(session);
-    final paths = <XFile>[];
-    final names = <String>[];
-    for (final card in bundle.cards) {
-      paths.add(XFile(storage.file(card.path).path, mimeType: 'image/jpeg'));
-      names.add(card.name);
-    }
-    final base = reportFilenameBase(
-      session.stage, session.date, DateTime.parse(bundle.createdAt));
-    paths.add(XFile(storage.file(bundle.packagePath).path,
-        mimeType: 'application/octet-stream'));
-    names.add('$base.mule');
+    final params = muleDocumentShareParams(
+      session: session,
+      bundle: bundle,
+      absolutePath: (path) => storage.file(path).path,
+    );
+    // Count the attempt, not a confirmed WhatsApp delivery. The recipient
+    // must still check that every document actually reached the chat.
     await repo.recordShare(session);
-    await SharePlus.instance.share(ShareParams(
-      subject: base,
-      text: 'MuleAgent · ${session.stage == Stage.entry ? 'Entrada' : 'Salida'} '
-          '· ${session.date}',
-      files: paths,
-      fileNameOverrides: names,
-    ));
+    await SharePlus.instance.share(params);
   }
 }
