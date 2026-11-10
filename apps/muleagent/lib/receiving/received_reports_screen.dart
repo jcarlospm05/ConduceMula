@@ -200,6 +200,18 @@ class _ReceivedReportsScreenState extends State<ReceivedReportsScreen> {
         : 'Guardado cancelado. No se eliminaron datos.';
   });
 
+  Future<void> restoreBackup() => _run(() async {
+    final key = keyInput.text.trim();
+    final restored = await receiver.restore(
+      key: key.isEmpty ? null : key,
+    );
+    if (restored == null) return;
+    message = restored
+        ? 'Respaldo restaurado; se verificaron sus archivos.'
+        : 'No se restauró el respaldo.';
+    await _loadRows();
+  });
+
   Future<void> photo(String path) async {
     if (!mounted) return;
     await showDialog<void>(
@@ -457,6 +469,8 @@ class _ReceivedReportsScreenState extends State<ReceivedReportsScreen> {
             Icons.print_outlined, preview),
           action('Guardar respaldo administrativo',
             Icons.backup_outlined, backup),
+          action('Restaurar respaldo administrativo',
+            Icons.restore_outlined, restoreBackup),
           const Divider(height: 32),
           Text('Reportes recibidos',
             style: Theme.of(context).textTheme.titleLarge),
