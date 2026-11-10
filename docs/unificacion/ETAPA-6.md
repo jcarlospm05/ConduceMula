@@ -88,3 +88,19 @@ No dar por finalizada la etapa 6 ni distribuir como producción una APK debug si
 - Si WhatsApp sigue rechazando lotes documentales con JPG y `.mule`, registrar evidencia y diseñar el envío alternativo por pasos JPG y `.mule`, sin declarar éxito ni fusionar como final. **No está validado ni implementado ese fallback.**
 - La firma debug de una nueva ejecución de Actions puede variar; versión mayor no implica capacidad de actualizar sobre una instalación con certificado diferente. Respaldar antes y comprobar firma para cualquier migración.
 - La etapa 6 sigue **EN DESARROLLO** hasta contar con CI, APK candidata 1.2.1+8 y prueba física favorable. La APK 1.2.0+7 queda invalidada como candidata aprobada de campo.
+
+
+## Checkpoint técnico 6.3 — release optimizada 1.2.2 (10 noviembre 2026)
+
+**Objetivo: APK menor de 90 MB, sin eliminar funciones. ALCANZADO.**
+
+- El tamaño de la APK ARM64 previa en modo debug era 101,122,281 bytes (kernel Dart sin AOT y bibliotecas de depuración). No era necesario borrar formularios ni funciones.
+- Corrección de recurso obligatorio para producir release: los dos archivos `muleagent_logo.png` y `LOGO_MULEAGENT_V1.png` eran, realmente, imágenes JPEG con nombre PNG. La conversión a PNG auténtico se efectuó con pruebas de **igualdad exacta de todos los píxeles decodificados**; no se modificó el diseño aprobado.
+- Compilación Flutter `--release --split-per-abi --build-name=1.2.2 --build-number=9 --obfuscate --split-debug-info=build/symbols`. Se usa exclusivamente arquitectura ARM64. Se mantienen SQLCipher, SQLite, flujo Supervisor/Administrador, fotos, cifrado, paquete `.mule`, JPG y recepción.
+- Resultado GitHub Actions: https://github.com/jcarlospm05/ConduceMula/actions/runs/42876859510 — **SUCCESS**.
+- **Tamaño APK: 25,945,455 bytes (25.9 MB, menor de 90 MB).**
+- Id Android `com.muleagent.operador`, `versionName=1.2.2`, `versionCode=2009`; APK con firma válida y no depurable.
+- SHA-256: `36b59f9fd6e98af8302ff61284a7a22c73ab5fd4194ebdaf8ea529add7e521ec`.
+- Descarga APK individual, sin ZIP: https://github.com/jcarlospm05/ConduceMula/releases/download/conducemula-v1.2.2-arm64-release-candidate/MuleAgent-ConduceMula-1.2.2-arm64-release.apk
+- **Firma no permanente:** GitHub confirmó la ausencia de los cuatro secretos `MULEAGENT_RELEASE_*`; esta compilación utilizó `EPHEMERAL_FIELD_TEST_KEY`. La clave privada temporal no se conserva: una futura actualización con otra firma no preservará la instalación directamente.
+- **Estado: RELEASE COMPILADA / PRUEBAS FÍSICAS Y FIRMA PERMANENTE PENDIENTES.** No denominarla producto final de producción. La etapa 6 sigue abierta; falta aceptación real WhatsApp, copia de seguridad/restauración y firma con certificado duradero, respaldado y verificado.
