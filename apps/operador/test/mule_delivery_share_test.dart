@@ -27,7 +27,7 @@ void main() {
     expect(params.fileNameOverrides, [
       'ficha_salida_000362.jpg',
       'ficha_salida_000363.jpg',
-      'salida_2026-11-10_10-11-12-000.mule',
+      'salida_2026-11-10_${DateTime.parse(bundle.createdAt).toLocal().hour.toString().padLeft(2, '0')}-11-12-000.mule',
     ]);
   });
 
