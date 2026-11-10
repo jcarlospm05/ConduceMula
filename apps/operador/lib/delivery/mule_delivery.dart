@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 
 import '../cards/jpg_card_files.dart';
+import 'mule_share_documents.dart';
 import '../public_reports.dart';
 import '../report_filename.dart';
 import '../services.dart';
@@ -73,11 +74,11 @@ class MuleDeliveryBundle {
   ];
 }
 
-/// Builds a homogeneous document-only share, so Android does not use the
-/// */* MIME type for a mixture of image/jpeg and application/octet-stream.
+/// Builds an ordered document manifest for the native Android sender.
+/// Android sets the application/octet-stream intent MIME explicitly.
 /// WhatsApp may silently drop streams from that mixed-type intent while
 /// keeping EXTRA_TEXT. A JPG stays a JPEG on disk and keeps its .jpg name:
-/// this MIME label only selects document sharing rather than media sharing.
+/// native Android forces the document intent, bypassing plugin MIME inference.
 ///
 /// The receiving app ultimately controls which attachments it accepts;
 /// success still needs verification on a real Android/WhatsApp installation.
@@ -309,8 +310,8 @@ class MuleDelivery {
     return count;
   }
 
-  /// Share all cards and their encrypted packet as documents, without
-  /// a text-only fallback. Copies in Downloads remain available for recovery.
+  /// Send all cards and the encrypted packet through the native Android
+  /// document chooser. Copies in Downloads remain available for recovery.
   Future<void> share(CaptureSession session) async {
     await savePublic(session);
     final bundle = await ensureBundle(session);
@@ -322,6 +323,6 @@ class MuleDelivery {
     // Count the attempt, not a confirmed WhatsApp delivery. The recipient
     // must still check that every document actually reached the chat.
     await repo.recordShare(session);
-    await SharePlus.instance.share(params);
+    await MuleShareDocuments.share(params);
   }
 }
