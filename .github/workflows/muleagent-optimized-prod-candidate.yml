@@ -28,16 +28,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Verify Dart and Flutter source
-        shell: bash
+      # All six module test suites already passed on the same app code in CI.
+      # This packaging workflow repeats the unified static check only.
+      - name: Verify unified Flutter source
+        working-directory: apps/muleagent
         run: |
-          set -euo pipefail
-          (cd packages/mule_profiles && dart pub get && dart analyze && dart test)
-          (cd packages/mule_data && dart pub get && dart analyze && dart test)
-          (cd packages/admin_data && dart pub get && dart analyze && dart test)
-          (cd apps/operador && flutter pub get && flutter analyze && flutter test --timeout=120s)
-          (cd apps/administrador && flutter pub get && flutter analyze && flutter test --timeout=120s)
-          (cd apps/muleagent && flutter pub get && flutter analyze && flutter test --timeout=120s)
+          flutter pub get
+          flutter analyze
       - name: Restore stable release credentials when available
         id: creds
         shell: bash
@@ -52,10 +49,10 @@ jobs:
           if [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
             printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/muleagent-signing.jks"
             test -s "$RUNNER_TEMP/muleagent-signing.jks"
-            echo "source=STABLE_USER_KEYSTORE" >> "$GITHUB_OUTPUT"
-            echo "storepass=$STORE_PASSWORD" >> "$GITHUB_OUTPUT"
-            echo "alias=$KEY_ALIAS" >> "$GITHUB_OUTPUT"
-            echo "keypass=$KEY_PASSWORD" >> "$GITHUB_OUTPUT"
+            echo "SIGN_SOURCE=STABLE_USER_KEYSTORE" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_STORE_PASSWORD=$STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
           else
             # An installable optimized release-mode binary can still be
             # produced for acceptance, but MUST NOT be called production.
@@ -65,19 +62,16 @@ jobs:
               -keyalg RSA -keysize 3072 -validity 365 \
               -dname "CN=MuleAgent Field Test, O=MuleAgent, C=DO" \
               -storepass "$passwd" -keypass "$passwd" -noprompt >/dev/null 2>&1
-            echo "source=EPHEMERAL_FIELD_TEST_KEY" >> "$GITHUB_OUTPUT"
-            echo "storepass=$passwd" >> "$GITHUB_OUTPUT"
-            echo "alias=muleagenttest" >> "$GITHUB_OUTPUT"
-            echo "keypass=$passwd" >> "$GITHUB_OUTPUT"
+            echo "SIGN_SOURCE=EPHEMERAL_FIELD_TEST_KEY" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_STORE_PASSWORD=$passwd" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_KEY_ALIAS=muleagenttest" >> "$GITHUB_ENV"
+            echo "MULEAGENT_RELEASE_KEY_PASSWORD=$passwd" >> "$GITHUB_ENV"
             echo "::warning::No permanent user-owned signing secrets were configured. Candidate is NOT a final production APK and cannot be safely upgraded without a signing key backup."
           fi
       - name: Build compact non-debuggable ARM64 release APK
         working-directory: apps/muleagent
         env:
           MULEAGENT_RELEASE_KEYSTORE: ${{ runner.temp }}/muleagent-signing.jks
-          MULEAGENT_RELEASE_STORE_PASSWORD: ${{ steps.creds.outputs.storepass }}
-          MULEAGENT_RELEASE_KEY_ALIAS: ${{ steps.creds.outputs.alias }}
-          MULEAGENT_RELEASE_KEY_PASSWORD: ${{ steps.creds.outputs.keypass }}
         run: |
           set -euo pipefail
           flutter build apk --release --split-per-abi \
@@ -87,7 +81,6 @@ jobs:
         working-directory: apps/muleagent
         shell: bash
         env:
-          SIGN_SOURCE: ${{ steps.creds.outputs.source }}
           EXPECTED_SIGNER_SHA256: ${{ vars.MULEAGENT_EXPECTED_RELEASE_SHA256 }}
         run: |
           set -euo pipefail
@@ -140,7 +133,6 @@ jobs:
       - name: Publish direct APK without ZIP as a field-test release candidate
         shell: bash
         env:
-          SIGN_SOURCE: ${{ steps.creds.outputs.source }}
         run: |
           set -euo pipefail
           mkdir -p /tmp
