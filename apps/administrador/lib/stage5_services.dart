@@ -528,6 +528,26 @@ class Stage5AdminServices {
       bytes);
   }
 
+  Future<bool?> restore({String? key}) async {
+    await _ready();
+    final chosen = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (chosen == null) return null;
+    final path = chosen.files.single.path;
+    if (path == null) throw StateError('No se pudo abrir el respaldo.');
+    if (p.extension(path).toLowerCase() != '.mulebackup') {
+      throw const FormatException('Selecciona un respaldo .mulebackup.');
+    }
+    final file = File(path);
+    if (await file.length() > PackageCodec.maxBytes * 2) {
+      throw StateError('El respaldo supera el tamaño permitido.');
+    }
+    final data = await compute(decryptPayload, {
+      'bytes': await file.readAsBytes(),
+      'password': key ?? await storage.password(),
+    });
+    return restorePayload(data);
+  }
+
   Future<bool> restorePayload(
     Map<String, dynamic> payload, {
     bool merge = false,
