@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:sqflite_common/sqlite_api.dart';
 import 'package:uuid/uuid.dart';
 
-import 'payload.dart';
 
 /// Separate, versioned metadata. Received originals remain immutable.
 Future<void> ensureStage5ManagementSchema(Database db) => db.transaction((tx) async {
