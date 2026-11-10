@@ -32,7 +32,10 @@ void main() {
       final session = await operator.start(Stage.entry, '2026-11-10');
       await operator.addTicket(session);
       final draft = (await operator.draft(session))!;
-      await operator.saveValue(draft, '000362');
+      await operator.saveValue(draft, 'Julio');
+      await operator.move(draft, draft.step + 1);
+      final codeDraft = (await operator.draft(session))!;
+      await operator.saveValue(codeDraft, '000362');
       await operator.setSetting('operator', 'Julio');
       await operator.setSetting('mule_theme_v1', 'dark');
       await profiles.configure(AppRole.administrator);
@@ -64,6 +67,7 @@ void main() {
         );
         expect((await resumed.resume())?.id, session.id);
         expect((await resumed.draft(session))?.values['code'], '000362');
+        expect((await resumed.draft(session))?.values['driver'], 'Julio');
         expect(await resumed.setting('operator'), 'Julio');
         expect(await resumed.setting('mule_theme_v1'), 'dark');
         expect(await upgraded.query('reports'), reportRowsBefore);
