@@ -101,6 +101,41 @@ jobs:
           path: apps/muleagent/build/release-candidate/*.zip
           if-no-files-found: error
           retention-days: 30
+      # The universal debug APK includes three CPU architectures and exceeds
+      # the Google Drive connector's direct-upload 100 MiB limit. Build a
+      # separate, still unmodified application for modern ARM64 Android phones.
+      - name: Build small standalone arm64 test APK
+        working-directory: apps/muleagent
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter build apk --debug --target-platform=android-arm64
+          apk=build/app/outputs/flutter-apk/app-debug.apk
+          test -s "$apk"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          "$signer" verify --print-certs "$apk"
+          "$aapt" dump badging "$apk" | grep -q "package: name='com.muleagent.operador' versionCode='8' versionName='1.2.1'"
+          unzip -Z1 "$apk" | grep -q '^lib/arm64-v8a/'
+          if unzip -Z1 "$apk" | grep -Eq '^lib/(x86_64|armeabi-v7a)/'; then
+            echo "Unexpected non-ARM64 native library in mobile APK" >&2
+            exit 1
+          fi
+          size=$(stat -c%s "$apk")
+          echo "APK bytes: $size"
+          test "$size" -lt 104857600
+          mkdir -p build/drive-apk
+          cp "$apk" build/drive-apk/MuleAgent-ConduceMula-1.2.1-b8-arm64-debug.apk
+          sha256sum build/drive-apk/*.apk
+      - name: Retain direct-install arm64 APK for Google Drive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConduceMula-Android-ARM64-APK-Directa
+          path: apps/muleagent/build/drive-apk/*.apk
+          compression-level: 6
+          if-no-files-found: error
+          retention-days: 30
       - name: Retain native compile diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v4
