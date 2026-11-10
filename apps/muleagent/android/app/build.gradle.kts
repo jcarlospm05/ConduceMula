@@ -64,6 +64,11 @@ android {
     }
 }
 
+dependencies {
+    // Explicit dependency for the outgoing document FileProvider.
+    implementation("androidx.core:core:1.16.0")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
