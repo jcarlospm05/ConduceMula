@@ -87,6 +87,47 @@ void main() {
     expect(image.height, 1740);
   });
 
+
+  testWidgets('Las fotos panorámicas y verticales conservan su proporción en la ficha', (tester) async {
+    final crops = await tester.runAsync(() async {
+      Future<image_codec.Image> card(int photoWidth, int photoHeight) async {
+        final original = image_codec.Image(width: photoWidth, height: photoHeight);
+        image_codec.fill(original, color: image_codec.ColorRgb8(230, 22, 20));
+        final jpg = await renderMuleJpgCard(
+          session: CaptureSession('revision-aspecto', Stage.exit, '2026-11-10'),
+          revisionNumber: 1,
+          supervisor: 'Supervisor A',
+          ticket: {
+            'id': 'ficha-aspecto',
+            'code': '000362',
+            'provider': 'Proveedor A',
+            'time': '08:00',
+            'meter': '1234.5',
+            'evidence_state': 'photo',
+          },
+          originalPhoto: Uint8List.fromList(image_codec.encodePng(original)),
+        );
+        return image_codec.decodeJpg(jpg)!;
+      }
+
+      final landscape = await card(300, 100);
+      final portrait = await card(100, 300);
+      return {
+        // With BoxFit.contain a wide photo leaves visible padding above it.
+        'widePadding': landscape.getPixel(200, 950).g,
+        'widePhoto': landscape.getPixel(200, 1200).g,
+        // A tall photo leaves visible padding to its left.
+        'tallPadding': portrait.getPixel(100, 1180).g,
+        'tallPhoto': portrait.getPixel(600, 1180).g,
+      };
+    });
+    expect(crops, isNotNull);
+    expect(crops!['widePadding'], greaterThan(180));
+    expect(crops['widePhoto'], lessThan(100));
+    expect(crops['tallPadding'], greaterThan(180));
+    expect(crops['tallPhoto'], lessThan(100));
+  });
+
   testWidgets('Ficha con omisión documentada sin inventar fotografía', (tester) async {
     final jpg = await tester.runAsync(
       () => renderMuleJpgCard(
