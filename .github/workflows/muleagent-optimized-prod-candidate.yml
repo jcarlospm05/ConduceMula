@@ -30,6 +30,20 @@ jobs:
           java-version: '17'
       # All six module test suites already passed on the same app code in CI.
       # This packaging workflow repeats the unified static check only.
+      - name: Verify official image format for Android release
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          files = [
+              'apps/muleagent/android/app/src/main/res/drawable-nodpi/muleagent_logo.png',
+              'apps/operador/assets/LOGO_MULEAGENT_V1.png',
+          ]
+          for name in files:
+              assert Path(name).read_bytes().startswith(bytes.fromhex('89504e470d0a1a0a')), f'Invalid PNG format: {name}'
+              print(f'Validated real PNG: {name}')
+          PY
       - name: Verify unified Flutter source
         working-directory: apps/muleagent
         run: |
