@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 /**
  * Provides Android a real ACTION_SEND_MULTIPLE of content:// documents.
  * We deliberately do not include EXTRA_TEXT, which WhatsApp could send
- * alone when presented with a heterogeneous */* MIME selection.
+ * alone when presented with a heterogeneous wildcard MIME selection.
  *
  * Each batch uses exact byte copies in a private cache directory, exposed
  * only by temporary read grants for the selected recipient.
