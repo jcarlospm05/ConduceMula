@@ -62,8 +62,11 @@ def main() -> None:
             "Version name does not match Flutter pubspec.")
 
     cert_info = CERT.read_text(encoding="utf-8")
-    require("Signer #1 certificate SHA-256 digest:" in cert_info,
-            "Missing verified signer fingerprint.")
+    signer_match = re.search(
+        r"(?:V2 Signer|Signer #1): certificate SHA-256 digest:\s*([a-fA-F0-9]{64})",
+        cert_info,
+    )
+    require(signer_match is not None, "Missing verified signer fingerprint.")
     if args.release:
         require("application-debuggable" not in badging,
                 "Release APK must not be debuggable.")
@@ -93,10 +96,7 @@ def main() -> None:
         "signing_source": os.getenv("SIGNING_SOURCE", "unknown"),
         "apk_name": apk_name,
         "apk_sha256": package_sha,
-        "signer_sha256": re.search(
-            r"Signer #1 certificate SHA-256 digest:\s*([a-fA-F0-9]{64})",
-            cert_info,
-        ).group(1),
+        "signer_sha256": signer_match.group(1),
         "upgrade_compatibility": "UNVERIFIED_COMPARE_INSTALLED_CERTIFICATE",
         "physical_android_testing": "PENDING",
     }
