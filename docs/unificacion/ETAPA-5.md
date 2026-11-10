@@ -1,6 +1,6 @@
 # Etapa 5 — Administrador simplificado
 
-**Estado: INICIADA — checkpoint 5.1, no cerrada.**
+**Estado: TERMINADA — implementación integrada y verificada por GitHub Actions.**
 **Repositorio único:** `jcarlospm05/ConduceMula`.
 **Base aprobada:** `refactor/mule-unificada` (etapas 1–4 completas).
 **Rama de trabajo:** `feat/administrador-etapa5`.
@@ -24,18 +24,18 @@
 - `apps/muleagent/lib/application/unified_bundle.dart`: inicialización aditiva del esquema en instalaciones nuevas o existentes, después de validar el esquema administrativo histórico.
 - Pruebas de contrato y persistencia: legados PDF, integridad JPG, revisiones/colisiones, reenvíos, dos supervisores, almacenamiento inmutable.
 
-### Pendiente en el checkpoint 5.2
+## Cierre de etapa 5
 
-Conectar el receptor `AdminServices`/UI a `JpgReceivedReport`: descifrado, almacenamiento privado original con SHA-256 y transacción de importación, bandeja de reportes JPG e indicador de origen. Incluir estos registros y archivos en respaldos/restauración administrativos antes de habilitar el uso real.
+**5.2 Recepción y respaldos:** `apps/administrador/lib/stage5_services.dart` recibe `.mule` v2 JPG y v1 PDF histórico, descifra, valida y almacena originales y paquete cifrado. Consolida datos sin convertir JPG a PDF ficticio. El respaldo incluye tablas JPG, imágenes sin asociar, exclusiones y archivos verificados; restaura conservando los originales.
 
-### Checkpoints siguientes
+**5.3 JPG independientes:** selección por fecha, etapa y supervisor declarado. Validación del archivo, deduplicación SHA-256 y conservación como anexo independiente, sin atribuirlo falsamente a una ficha.
 
-5.3. Importación de JPG sueltos por fecha/etapa con fuente e integridad, sin asociarlos automáticamente a jornadas sin identificación validada.
+**5.4 Consolidación:** `packages/admin_data/lib/stage5_management.dart` y `Stage5AdminServices.cards` presentan última revisión por jornada, supervisores de origen, avisos de etapa faltante y códigos repetidos, exclusión y reinclusión reversible. Los originales importados son inmutables.
 
-5.4. Vista consolidada por fecha/etapa y supervisor, exclusiones reversibles, duplicados/conflictos, aviso de jornadas incompletas. Solo datos realmente verificados.
+**5.5 PDF administrativo:** la pantalla `ReceivedReportsScreen` ofrece recepción, fecha, etapa, consolidación, exclusiones, JPG independientes, vista previa y generación de PDF por entrada o salida. El flujo unificado no expone cruces ni Excel. Los módulos históricos permanecen para compatibilidad.
 
-5.5. PDF de Administrador con fichas seleccionadas; retirar Excel y cruces del recorrido visible. Preservar históricos y registros de auditoría.
+**5.6 Verificación:** `apps/muleagent/test/stage5_admin_test.dart` cubre importación real de un `.mule` JPG generado por el Supervisor, reenvío, consolidación, exclusión/reinclusión, PDF, imágenes sueltas, respaldo/restauración y restricción de permisos. `packages/admin_data/test/stage5_management_test.dart`, `jpg_inbox_test.dart` y `jpg_payload_test.dart` comprueban integridad, duplicados, esquema e historial. Las tres acciones de GitHub para el commit `ceb4c90a4598f85ae8233c0b4a0b43b6fb47b46b` concluyeron **success**: Operador, Administrador y MuleAgent modular.
 
-5.6. Pruebas Flutter, actualización de datos/roles, interoperabilidad con `.mule` 1 y 2, compilación APK debug única; integración en `refactor/mule-unificada` y documentación de cierre. Validación Android físico y firma final en etapa 6.
+**Criterio de cierre:** código y pruebas aprobados en CI, rama fusionada a `refactor/mule-unificada`. Las pruebas con teléfono Android, instalación/actualización física, firma de distribución y entrega de APK final corresponden a la **etapa 6**, no se presentan como ejecutadas aquí.
 
-**No usar en producción una etapa incompleta.** El checkpoint 5.1 añade parser y almacenamiento, pero todavía no habilita importación de JPG en pantalla.
+**Siguiente paso:** etapa 6 — verificación final y APK única.
