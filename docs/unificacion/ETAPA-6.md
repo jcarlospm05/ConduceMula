@@ -1,6 +1,6 @@
 # Etapa 6 — Validación final y APK única
 
-**Estado: CHECKPOINT TÉCNICO 6.1 VERIFICADO — aceptación Android física y firma definitiva pendientes.**
+**Estado: ETAPA 6 EN CORRECCIÓN DE CAMPO — checkpoint 6.1 compiló, pero la APK 1.2.0+7 presentó fallos reales de adjuntos y proporción de fotos. Nueva candidata 1.2.1+8 pendiente de CI y aceptación Android física.**
 **Repositorio oficial:** `jcarlospm05/ConduceMula` (no editar `jcarlospm05/MuleAgent`).
 **Base:** `refactor/mule-unificada` con etapas 1–5 integradas.
 **Rama:** `feat/etapa6-validacion-apk`.
@@ -68,3 +68,23 @@ No dar por finalizada la etapa 6 ni distribuir como producción una APK debug si
 - El ZIP y la APK descargados se verificaron por integridad con los checksums incluidos. La compilación de depuración usa una clave temporal de GitHub Actions.
 
 **Pendiente antes de marcar la etapa como TERMINADA:** realizar y registrar los casos de la matriz Android/WhatsApp en un dispositivo físico; determinar compatibilidad de certificado con la instalación anterior y validar respaldo/actualización sin perder datos; configurar firma de producción estable y ejecutar el flujo manual `.github/workflows/muleagent-signed-release.yml`. Ese workflow requiere secretos GitHub protegidos y disponibilidad de ejecución en la rama predeterminada. El APK candidato NO debe distribuirse como actualización de producción.
+
+
+## Incidencias reportadas en Android real — 10 de noviembre de 2026
+
+**La APK debug 1.2.0+7 NO supera la aceptación de campo:** el usuario confirmó que el botón de WhatsApp entregó solamente un texto y no los JPG ni el paquete cifrado `.mule`; también observó la fotografía del horómetro distorsionada en la ficha JPG. El estado verde de GitHub Actions anterior no detectaba estos casos.
+
+### Corrección 6.2 en `feat/etapa6-validacion-apk`
+
+1. **WhatsApp:** el envío anterior combinaba `image/jpeg` y `application/octet-stream` y agregaba `EXTRA_TEXT`. Android podía emitir una acción mixta `*/*`, que WhatsApp puede interpretar como texto y descartar adjuntos. El nuevo envío prepara todas las fichas JPG y el `.mule` como documentos `application/octet-stream`, conserva sus extensiones y nombres mediante `fileNameOverrides`, y **omite el texto** para evitar una falsa entrega solo de texto. Es una mitigación técnica, no una garantía de comportamiento de WhatsApp; requiere prueba física de envío completo. Las imágenes se enviarán como *documentos JPG*, no como fotos comprimidas de galería.
+2. **Foto deformada:** `ui.instantiateImageCodec` recibía simultáneamente `targetWidth: 1060` y `targetHeight: 610`, lo que forzaba una relación de aspecto incorrecta *antes* del `BoxFit.contain`. Ahora decodifica con un solo límite dimensional y dibuja dentro de la ficha manteniendo proporciones, sin recortar ni alterar los originales.
+3. **Pruebas de regresión:** comprobar que el descriptor de compartir incluye N fichas JPG + un archivo `.mule`, MIME homogéneo de documentos, nombres legibles y ausencia de `EXTRA_TEXT`; renderizar fotos horizontal y vertical y verificar que queda margen donde corresponde (sin deformación).
+4. **Versión:** candidata **1.2.1+8**; el código Android, test CI de identidad y workflow de release quedan alineados. **No confundir con la APK anterior 1.2.0+7**. Generar nuevo ZIP/hash desde la ejecución nueva.
+
+### Restricciones de integridad y aceptación
+
+- Las fichas JPG ya emitidas en una revisión cerrada son **inmutables** y están vinculadas a hashes del respaldo. No reescribirlas silenciosamente al actualizar: crear una nueva revisión de la jornada para generar una ficha corregida, conservando los originales y el histórico.
+- La prueba de Android debe verificar con el destinatario el **número exacto y los nombres** de adjuntos, la posibilidad de descargar y abrir `.mule`, y la orientación visual de al menos una foto vertical y otra horizontal. Probar nuevo cierre y reenvío desde historial.
+- Si WhatsApp sigue rechazando lotes con documentos mixtos, registrar evidencia y diseñar el envío alternativo por pasos JPG y `.mule`, sin declarar éxito ni fusionar como final. **No está validado ni implementado ese fallback.**
+- La firma debug de una nueva ejecución de Actions puede variar; versión mayor no implica capacidad de actualizar sobre una instalación con certificado diferente. Respaldar antes y comprobar firma para cualquier migración.
+- La etapa 6 sigue **EN DESARROLLO** hasta contar con CI, APK candidata 1.2.1+8 y prueba física favorable. La APK 1.2.0+7 queda invalidada como candidata aprobada de campo.
