@@ -1,0 +1,74 @@
+name: Entrega directa APK MuleAgent ARM64
+on:
+  push:
+    branches: [feat/etapa6-validacion-apk]
+    paths:
+      - '.github/workflows/muleagent-direct-download.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish-apk:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: conducemula-v1.2.1-b8-arm64-rc6-debug
+      EXPECTED_SHA256: 26a4b8ba2899f88f884a1c0cfa73f5d0a53064d6025143df9a6a22cd4b341761
+      APK_NAME: MuleAgent-ConduceMula-1.2.1-b8-arm64-debug.apk
+    steps:
+      - name: Descargar compilación ARM64 ya verificada
+        run: |
+          set -euo pipefail
+          mkdir -p download
+          gh run download 42858908258 -R "${GITHUB_REPOSITORY}" \
+            --name ConduceMula-1.2.1-b8-ARM64-APK --dir download
+          test -s "download/$APK_NAME"
+      - name: Comprobar identidad criptográfica e instalación
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd download
+          echo "$EXPECTED_SHA256  $APK_NAME" | sha256sum --check -
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          "$signer" verify --verbose --print-certs "$APK_NAME" | tee cert.txt
+          "$aapt" dump badging "$APK_NAME" | grep -q "package: name='com.muleagent.operador' versionCode='2008' versionName='1.2.1'"
+          unzip -Z1 "$APK_NAME" | grep -q '^lib/arm64-v8a/'
+          if unzip -Z1 "$APK_NAME" | grep -Eq '^lib/(x86_64|armeabi-v7a)/'; then
+            echo "Hay librerías de otra arquitectura" >&2
+            exit 1
+          fi
+          sha256sum "$APK_NAME" > SHA256SUMS.txt
+      - name: Publicar APK directa como pre-lanzamiento identificada
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/notes.md <<'EOF'
+          # MuleAgent ConduceMula 1.2.1 — APK ARM64 para pruebas
+          
+          **Esta NO es una versión final de producción.**
+          APK debug de la aplicación unificada Supervisor/Administrador, exclusivamente para dispositivos Android ARM64.
+          Incluye correcciones para compartir JPG y paquetes `.mule` y para conservar la proporción de las fotos en fichas.
+          **El envío real por WhatsApp sigue pendiente de aceptación física.**
+          
+          **No desinstales la app anterior sin antes guardar un respaldo.** La firma debug puede no coincidir con la instalación antigua.
+          La APK y el archivo SHA256SUMS.txt están disponibles como descargas separadas, sin ZIP ni biblioteca de ChatGPT.
+          
+          Código fuente: rama feat/etapa6-validacion-apk, PR #4 (etapa 6 abierta).
+          EOF
+          if gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" \
+              "download/$APK_NAME" download/SHA256SUMS.txt \
+              --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" \
+              "download/$APK_NAME" download/SHA256SUMS.txt \
+              -R "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "MuleAgent ConduceMula 1.2.1 ARM64 — prueba de campo" \
+              --notes-file /tmp/notes.md \
+              --prerelease
+          fi
+          gh release view "$RELEASE_TAG" -R "$GITHUB_REPOSITORY" --json url,assets

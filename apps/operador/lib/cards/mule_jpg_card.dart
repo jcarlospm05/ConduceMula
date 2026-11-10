@@ -157,8 +157,10 @@ Future<Uint8List> renderMuleJpgCard({
   if (evidenceState == 'photo') {
     final codec = await ui.instantiateImageCodec(
       originalPhoto!,
+      // A single decode dimension preserves the camera's aspect ratio.
+      // Using both targetWidth and targetHeight warped portrait/wide photos
+      // before BoxFit.contain could place them in the JPG card.
       targetWidth: 1060,
-      targetHeight: 610,
     );
     final frame = await codec.getNextFrame();
     paintImage(

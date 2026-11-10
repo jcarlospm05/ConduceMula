@@ -93,13 +93,13 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 3. **Estilo Mule y captura**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #1. Temas claro/oscuro persistentes, logo PNG oficial `LOGO_MULEAGENT_V1` sin modificación, inicio/continuación, salida naranja, puntos pendientes, teclado/hora separada y miniaturas. **54 pruebas y análisis sin incidencias + APK debug unificada compilada** (CI 42680728689). Detalle en ETAPA-3.md. La validación física permanece en la etapa 6.
 4. **JPG + .mule**: **COMPLETADA** e integrada en ConduceMula, `refactor/mule-unificada`, PR #2. JPG por mula con logo aprobado, paquete `.mule` cifrado sin PDF nuevo, guardado verificado en Descargas, reenvío de JPG + `.mule`, recuperación y respaldo de originales. **60 pruebas, análisis sin incidencias y APK debug unificada compilada** (CI 42693235907). Ver `ETAPA-4.md`.
 5. **Administrador simplificado — TERMINADA**: recepción de `.mule` JPG v2 y PDF histórico, JPG independientes por fecha/etapa, consolidación por supervisor, duplicados y avisos, exclusión/reinclusión, PDF administrativo y respaldo/restauración. Sin Excel ni cruces en la nueva interfaz. Tres workflows GitHub en verde; ver `ETAPA-5.md`.
-6. **Verificación y entrega**: actualizaciones con datos existentes, compatibilidad, Android/WhatsApp/archivos, firmas y APK única en ZIP.
+6. **Verificación y entrega — EN DESARROLLO / CORRECCIÓN DE CAMPO**: rama `feat/etapa6-validacion-apk` en ConduceMula. El candidato 1.2.0+7 superó CI pero falló en Android real: WhatsApp compartió solo texto, sin JPG/.mule, y la ficha deformó la foto del horómetro. Se implementa el envío nativo de documentos con FileProvider, permisos por URI y sin EXTRA_TEXT (evitando la inferencia MIME de share_plus) y se corrige la decodificación de fotos (aspecto intacto); nueva candidata 1.2.1+8, pruebas/CI y aceptación física aún pendientes. La versión anterior no se declara válida para uso real. Conserva controles de identidad/firma, ZIP con hashes, guía y firma release protegida; ver `ETAPA-6.md`.
 
 Cada etapa tendrá su propio cambio y resumen. Una etapa técnica aprobada no equivale a la app unificada terminada. La versión distribuida permanece 1.0.3 hasta producir una entrega funcional nueva.
 
 ## Próximo punto de reanudación
 
-**Etapa 5 cerrada. Iniciar etapa 6** desde `refactor/mule-unificada` en **ConduceMula**. Administrador simplificado integrado y probado; ver `ETAPA-5.md`. Pendientes exclusivamente de etapa 6: actualización y recuperación de datos en dispositivo, roles, envío WhatsApp real, temas, firma Android y APK final en ZIP.
+**Etapa 6 en curso, corrección 6.2** en `feat/etapa6-validacion-apk` del repositorio ConduceMula. Candidato 1.2.0+7 con fallo reportado en campo; compilar y revisar candidato 1.2.1+8. No dar por corregido WhatsApp sin confirmar JPG + `.mule` recibidos en teléfono físico y proporción correcta de foto horizontal/vertical. Antes de producción: comparar certificados con APK instalada, respaldar, validar recuperación y emitir release con firma estable. Ver `ETAPA-6.md`.
 
 
 ## Checkpoint 1: estructura real

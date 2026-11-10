@@ -41,11 +41,32 @@ android {
         }
     }
 
-    buildTypes {
-        release {
-            // Production signing will be configured before distribution.
+    // Release keys live only in GitHub encrypted secrets or a local secure
+    // environment. Neither passwords nor keystore bytes enter this repository.
+    val releaseKeystore = System.getenv("MULEAGENT_RELEASE_KEYSTORE")
+    if (!releaseKeystore.isNullOrBlank()) {
+        signingConfigs.create("muleagentRelease") {
+            storeFile = file(releaseKeystore)
+            storePassword = System.getenv("MULEAGENT_RELEASE_STORE_PASSWORD")
+                ?: error("Missing release keystore password")
+            keyAlias = System.getenv("MULEAGENT_RELEASE_KEY_ALIAS")
+                ?: error("Missing release key alias")
+            keyPassword = System.getenv("MULEAGENT_RELEASE_KEY_PASSWORD")
+                ?: error("Missing release key password")
         }
     }
+    buildTypes {
+        release {
+            if (!releaseKeystore.isNullOrBlank()) {
+                signingConfig = signingConfigs.getByName("muleagentRelease")
+            }
+        }
+    }
+}
+
+dependencies {
+    // Explicit dependency for the outgoing document FileProvider.
+    implementation("androidx.core:core:1.16.0")
 }
 
 kotlin {

@@ -1,0 +1,66 @@
+name: MuleAgent ARM64 for Drive
+on:
+  push:
+    branches: [feat/etapa6-validacion-apk]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/muleagent-drive-arm64.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: muleagent-drive-arm64-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-arm64:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Compile split-per-ABI Android debug APK
+        working-directory: apps/muleagent
+        run: |
+          flutter pub get
+          flutter build apk --debug --split-per-abi
+      # Flutter split-per-abi uses ABI_VERSION*1000 + buildNumber; ARM64 = 2008.
+      - name: Verify installer is ARM64, installable and below Drive limit
+        working-directory: apps/muleagent
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+          test -s "$apk"
+          sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          signer="$(find "$sdk_root/build-tools" -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$sdk_root/build-tools" -name aapt | sort -V | tail -n 1)"
+          "$signer" verify --verbose --print-certs "$apk" | tee arm64-signature.txt
+          "$aapt" dump badging "$apk" | tee arm64-badging.txt
+          grep -q "package: name='com.muleagent.operador' versionCode='2008' versionName='1.2.1'" arm64-badging.txt
+          unzip -Z1 "$apk" | grep -q '^lib/arm64-v8a/'
+          if unzip -Z1 "$apk" | grep -Eq '^lib/(x86_64|armeabi-v7a)/'; then
+            echo "Unexpected non-ARM64 native library in mobile APK" >&2
+            exit 1
+          fi
+          size=$(stat -c%s "$apk")
+          echo "ARM64 APK bytes: $size"
+          test "$size" -lt 104857600
+          mkdir -p build/drive-apk
+          cp "$apk" build/drive-apk/MuleAgent-ConduceMula-1.2.1-b8-arm64-debug.apk
+          sha256sum build/drive-apk/*.apk
+      - name: Upload individual APK for direct Google Drive delivery
+        uses: actions/upload-artifact@v4
+        with:
+          name: ConduceMula-1.2.1-b8-ARM64-APK
+          path: apps/muleagent/build/drive-apk/*.apk
+          compression-level: 6
+          retention-days: 30
+          if-no-files-found: error

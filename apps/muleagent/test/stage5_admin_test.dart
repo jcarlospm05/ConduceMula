@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:administrador/stage5_services.dart';
+import 'package:administrador/services.dart';
+import 'package:admin_data/admin_data.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image_codec;
@@ -10,6 +12,7 @@ import 'package:mule_profiles/mule_profiles.dart';
 import 'package:muleagent/application/unified_capture_services.dart';
 
 import 'support.dart';
+import '../../../packages/admin_data/test/fixtures.dart' as fixtures;
 
 Future<CaptureSession> sampleClosed(TestInstallation source) async {
   final capture = source.bundle.capture;
@@ -179,4 +182,70 @@ void main() {
     });
     expect(denied, isTrue);
   });
+  testWidgets(
+    'Etapa 6: avisa diferencias de cantidades y respeta las exclusiones',
+    (tester) async {
+      final result = await tester.runAsync(() async {
+        final installation = await TestInstallation.create(
+          role: AppRole.administrator,
+        );
+        try {
+          final legacy = AdminServices(
+            installation.bundle.admin,
+            installation.bundle.capture,
+            installation.bundle.services,
+            access: installation.bundle.profiles,
+          );
+          final cases = [
+            fixtures.packet(
+              stage: 'entry',
+              report: 'report-entry-6',
+              revision: 'revision-entry-6',
+            ),
+            fixtures.packet(
+              stage: 'exit',
+              report: 'report-exit-6a',
+              revision: 'revision-exit-6a',
+            ),
+            fixtures.packet(
+              stage: 'exit',
+              report: 'report-exit-6b',
+              revision: 'revision-exit-6b',
+              code: '000363',
+            ),
+          ];
+          for (final packet in cases) {
+            await legacy.saveReport(
+              ReceivedReport.parse(packet),
+              source: 'received',
+            );
+          }
+          final admin = service(installation);
+          final before = await admin.warnings('2026-11-07');
+          final exits = await admin.cards('2026-11-07', stage: 'exit');
+          await admin.setIncluded(exits.last, false);
+          final after = await admin.warnings('2026-11-07');
+          final excluded = (await admin.cards(
+            '2026-11-07',
+            stage: 'exit',
+          )).where((card) => card['included'] == false).single;
+          await admin.setIncluded(excluded, true);
+          final restored = await admin.warnings('2026-11-07');
+          return {
+            'before': before.join(' '),
+            'after': after.join(' '),
+            'restored': restored.join(' '),
+          };
+        } finally {
+          await installation.close();
+        }
+      });
+      expect(result, isNotNull);
+      expect(result!['before'], contains('diferencia 1'));
+      expect(result['after'], isNot(contains('Jornada incompleta')));
+      expect(result['after'], contains('1 fichas excluidas'));
+      expect(result['restored'], contains('diferencia 1'));
+    },
+  );
+
 }
