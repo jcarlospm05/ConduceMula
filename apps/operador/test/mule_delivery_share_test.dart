@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mule_data/mule_data.dart';
 import 'package:operador/cards/jpg_card_files.dart';
 import 'package:operador/delivery/mule_delivery.dart';
+import 'package:operador/report_filename.dart';
 
 void main() {
   test('Envía JPG y .mule como documentos con nombres originales, nunca solo texto', () {
@@ -9,7 +10,7 @@ void main() {
     final bundle = MuleDeliveryBundle(
       createdAt: '2026-11-10T10:11:12.000',
       packagePath: 'private/closure.mule',
-      packageSha256: 'a' * 64,
+      packageSha256: 'sha-test',
       cards: const [
         JpgTicketArtifact(ticketId: 'ticket-1',
           name: 'ficha_salida_000362.jpg', path: 'private/one.jpg', sha256: 'hash1'),
@@ -27,7 +28,7 @@ void main() {
     expect(params.fileNameOverrides, [
       'ficha_salida_000362.jpg',
       'ficha_salida_000363.jpg',
-      'salida_2026-11-10_${DateTime.parse(bundle.createdAt).toLocal().hour.toString().padLeft(2, '0')}-11-12-000.mule',
+      '${reportFilenameBase(session.stage, session.date, DateTime.parse(bundle.createdAt))}.mule',
     ]);
   });
 
