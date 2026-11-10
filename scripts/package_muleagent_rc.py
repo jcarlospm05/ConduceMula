@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Package a verified, clearly labelled Android field-test build.
+"""Package verified Android APKs with hashes, signer and field checklist.
 
-No private keys, environment secrets or account identifiers are packaged.
-The resulting ZIP is a release *candidate*, not a production release.
+Release-mode archives are signed with user-owned secrets but still require
+physical-device acceptance before production distribution.
 """
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import os
@@ -16,7 +17,6 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = ROOT / "apps" / "muleagent"
-APK = APP / "build" / "app" / "outputs" / "flutter-apk" / "app-debug.apk"
 DOC = ROOT / "docs" / "unificacion" / "ETAPA-6.md"
 OUTPUT = APP / "build" / "release-candidate"
 BADGING = OUTPUT / "apk-badging.txt"
@@ -38,7 +38,12 @@ def sha256(path: Path) -> str:
 
 
 def main() -> None:
-    require(APK.is_file() and APK.stat().st_size > 50000,
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--release", action="store_true")
+    args = parser.parse_args()
+    apk = (APP / "build" / "app" / "outputs" / "flutter-apk" /
+           ("app-release.apk" if args.release else "app-debug.apk"))
+    require(apk.is_file() and apk.stat().st_size > 50000,
             "No valid APK candidate found.")
     require(DOC.is_file(), "Stage-6 field checklist is missing.")
     require(BADGING.is_file() and CERT.is_file(),
@@ -59,7 +64,12 @@ def main() -> None:
     cert_info = CERT.read_text(encoding="utf-8")
     require("Signer #1 certificate SHA-256 digest:" in cert_info,
             "Missing verified signer fingerprint.")
-    with ZipFile(APK, "r") as compiled:
+    if args.release:
+        require("application-debuggable" not in badging,
+                "Release APK must not be debuggable.")
+        require(os.getenv("SIGNING_SOURCE") == "github-encrypted-release-secrets",
+                "Release signer must come from protected secrets.")
+    with ZipFile(apk, "r") as compiled:
         require(compiled.testzip() is None, "The compiled APK is corrupt.")
         filenames = set(compiled.namelist())
         require("AndroidManifest.xml" in filenames,
@@ -67,17 +77,19 @@ def main() -> None:
         require("classes.dex" in filenames,
                 "Compiled APK lacks Dart/Android entry point.")
 
-    apk_name = f"MuleAgent-ConduceMula-{version}-b{code}-rc6.apk"
-    zip_name = f"MuleAgent-ConduceMula-{version}-b{code}-rc6.zip"
-    package_sha = sha256(APK)
+    suffix = "signed" if args.release else "rc6"
+    apk_name = f"MuleAgent-ConduceMula-{version}-b{code}-{suffix}.apk"
+    zip_name = f"MuleAgent-ConduceMula-{version}-b{code}-{suffix}.zip"
+    package_sha = sha256(apk)
     metadata = {
         "repository": "jcarlospm05/ConduceMula",
         "source_commit": os.getenv("GITHUB_SHA", "local"),
         "app_id": PACKAGE_ID,
         "version": version,
         "version_code": int(code),
-        "build_type": "debug",
-        "release_status": "FIELD_TEST_ONLY_NOT_PRODUCTION",
+        "build_type": "release" if args.release else "debug",
+        "release_status": ("SIGNED_RELEASE_PENDING_PHYSICAL_ACCEPTANCE"
+                           if args.release else "FIELD_TEST_ONLY_NOT_PRODUCTION"),
         "signing_source": os.getenv("SIGNING_SOURCE", "unknown"),
         "apk_name": apk_name,
         "apk_sha256": package_sha,
@@ -91,7 +103,7 @@ def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     archive = OUTPUT / zip_name
     with ZipFile(archive, "w", ZIP_DEFLATED, compresslevel=6) as out:
-        out.write(APK, apk_name)
+        out.write(apk, apk_name)
         out.writestr("SHA256SUMS.txt", f"{package_sha}  {apk_name}\n")
         out.writestr("BUILD_INFO.json",
                      json.dumps(metadata, indent=2, ensure_ascii=False) + "\n")
@@ -105,7 +117,9 @@ def main() -> None:
                 "ZIP is missing the installable APK.")
     print(f"Stage-6 field test ZIP: {archive}")
     print(f"APK SHA-256: {package_sha}")
-    print("Release status: debug candidate; do not publish as production")
+    print("Release status: signed release pending physical acceptance"
+          if args.release else
+          "Release status: debug candidate; do not publish as production")
 
 
 if __name__ == "__main__":
