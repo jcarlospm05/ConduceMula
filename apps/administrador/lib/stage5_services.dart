@@ -573,18 +573,22 @@ class Stage5AdminServices {
           'admin_stage5_images', 'admin_stage5_exclusions']) {
         for (final raw in extra[table] as List) {
           final row = Map<String, Object?>.from(raw as Map);
-          final keys = <String, String>{
-            'admin_jpg_revisions': 'id',
-            'admin_jpg_files': 'revision_id',
-            'admin_stage5_images': 'id',
-            'admin_stage5_exclusions': 'report_id',
+          final where = switch (table) {
+            'admin_jpg_files' => 'revision_id=? AND original_path=?',
+            'admin_stage5_exclusions' => 'report_id=? AND logical_id=?',
+            _ => 'id=?',
           };
-          final key = keys[table]!;
+          final args = switch (table) {
+            'admin_jpg_files' =>
+              [row['revision_id'], row['original_path']],
+            'admin_stage5_exclusions' =>
+              [row['report_id'], row['logical_id']],
+            _ => [row['id']],
+          };
           final existing = await tx.query(table,
-            where: '$key=?', whereArgs: [row[key]]);
+            where: where, whereArgs: args, limit: 1);
           if (existing.isNotEmpty) {
-            // Composite-key tables are handled by exact equality below.
-            if (!existing.any((r) => canonical(r) == canonical(row))) {
+            if (canonical(existing.single) != canonical(row)) {
               throw StateError('Conflicto al restaurar datos administrativos.');
             }
             continue;
